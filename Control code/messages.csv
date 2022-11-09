@@ -14,3 +14,7 @@ Process controller,Data Logger,Pressure sensor fault,"char ""f""; uint8_t Fault 
 Process controller,Data Logger,Temperature out of bounds,"char ""T""; uint8_t Temperature_ID; uint8_t over/under",T,2,"Temperature_ID identifies which reading is out of bounds, over/under details if it is over or under"
 Process controller,Data Logger,Flow out of bounds,"char ""F""; uint8_t Flow_ID; uint8_t over/under",F,2,
 Process controller,Data Logger,Pressure out of bounds,"Char ""P""; uint8_t Pressure_ID; uint8_t over/under",P,2,
+Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint; uint16_t I_sense",I,4,
+Data logger,Process controller,Safety codes,,,,
+Safety,Process controller,Safety codes,,,,
+Safety,Data logger,Safety codes,,,,
