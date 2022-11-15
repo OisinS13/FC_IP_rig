@@ -2,7 +2,6 @@
 #include <Adafruit_MAX31856.h>
 #include <Adafruit_PWMServoDriver.h>
 #include "SerialTransfer.h"
-#include <CircularBuffer.h>
 #include <AutoPID.h>
 
 SerialTransfer SafetySystem;
@@ -114,7 +113,7 @@ float CLNT_T_target = 77.0;  //target temperature for cathode inlet
 float CLNT_T_PID_KP = 0.12;
 float CLNT_T_PID_KI = 0.03;
 float CLNT_T_PID_KD = 0;
-uint16_t CLNT_FAN_output=0;
+uint16_t CLNT_FAN_output = 0;
 
 AutoPID CTHD_FLW_PID(&CTHD_FLW_reading, &CTHD_FLW_target, &CTHD_FLW_output, 0, 4095, CTHD_FLW_PID_KP, CTHD_FLW_PID_KI, CTHD_FLW_PID_KD);
 AutoPID CLNT_T_PID(&CLNT_T_reading, &CLNT_T_target, &CLNT_FAN_output, 0, 4095, CLNT_T_PID_KP, CLNT_T_PID_KI, CLNT_T_PID_KD);
@@ -129,14 +128,16 @@ uint32_t CLNT_FLW_min_current = 50000;   //Current at which the minimum coolant 
 uint32_t CLNT_FLW_max_current = 200000;  //Current at which the maximum coolant flow rate is applied, mA
 uint16_t CLNT_FLW_output = 0;            //Output value to write to PWM
 
-
-
-CircularBuffer<int, 100> DataLoggerqueue;
-
 struct Current_data {
   uint16_t set = 0;
   uint16_t sense = 0;
 } Current;
+
+struct Fault_message {
+  uint8_t Fault_code = 0;
+  uint8_t Fault_detail = 0;
+};
+struct Fault_message Incoming_fault;
 
 uint8_t Mode = 0;  //Mode of operation.
 /*
@@ -197,7 +198,7 @@ void setup() {
   }
   Interface.begin(Serial2);
   if (Serial) {
-    Serial.println("Load controller connected");
+    Serial.println("Interface connected");
   }
 
   Serial3.begin(115200);  //Connect to Data UART
@@ -213,7 +214,11 @@ void setup() {
     pinMode(CTHD_HTR_SFTY_DRDY[i], INPUT);  //Set the TC amp DRDY pins to inputs
     pinMode(CTHD_HTR_SFTY_FLT[i], INPUT);   //Set the TC amp FLT pins to inputs
     if (!HTR_SFTY_TC[i].begin()) {          //Initialise thermocouple amps over SPI
-      //EDITME write error throwing code
+      struct Fault_message SFTY_TC_Fault;
+      SFTY_TC_Fault.Fault_code = 0x14 + i;
+      SFTY_TC_Fault.Fault_detail = 0;
+      Interface.txObj(SFTY_TC_Fault);
+      DataLogger.txObj(SFTY_TC_Fault);
       if (Serial) {
         Serial.print("Could not initialize cathode heater safety thermocouple ");
         Serial.println(i);
@@ -224,47 +229,58 @@ void setup() {
       HTR_SFTY_TC[i].setTempFaultThreshholds(TC_low_temp_thresh, TC_high_temp_thresh);  //Set the TC amp internal low and high temperature thresholds to trigger faults automatically
       HTR_SFTY_TC_fault[i] = HTR_SFTY_TC[i].readFault();                                //Read any stored faults on startup
       if (HTR_SFTY_TC_fault[i]) {
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJRANGE) {
-          Serial.print("Cold Junction Range Fault, TC");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCRANGE) {
-          Serial.print("Thermocouple Range Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJHIGH) {
-          Serial.print("Cold Junction High Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJLOW) {
-          Serial.print("Cold Junction Low Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCHIGH) {
-          Serial.print("Thermocouple High Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCLOW) {
-          Serial.print("Thermocouple Low Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_OVUV) {
-          Serial.print("Over/Under Voltage Fault, TC1");
-          Serial.println(i);
-        }
-        if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_OPEN) {
-          Serial.print("Thermocouple Open Fault, TC1");
-          Serial.println(i);
+        struct Fault_message SFTY_TC_Fault;
+        SFTY_TC_Fault.Fault_code = 0x11 + i;
+        SFTY_TC_Fault.Fault_detail = HTR_SFTY_TC_fault[i];
+        Interface.txObj(SFTY_TC_Fault);
+        DataLogger.txObj(SFTY_TC_Fault);
+        if (Serial) {
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJRANGE) {
+            Serial.print("Cold Junction Range Fault, TC");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCRANGE) {
+            Serial.print("Thermocouple Range Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJHIGH) {
+            Serial.print("Cold Junction High Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJLOW) {
+            Serial.print("Cold Junction Low Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCHIGH) {
+            Serial.print("Thermocouple High Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_TCLOW) {
+            Serial.print("Thermocouple Low Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_OVUV) {
+            Serial.print("Over/Under Voltage Fault, TC1");
+            Serial.println(i);
+          }
+          if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_OPEN) {
+            Serial.print("Thermocouple Open Fault, TC1");
+            Serial.println(i);
+          }
         }
       }
     }
   }
 
   if (analogRead(CTHD_FLW_SIG_PIN) < Cathode_flow_sensor_minimum_threshold) {  //Flow sensor should output a minimum of 4mA, which should be read as 1V. Threshold of 190=0.928V
+    struct Fault_message CTHD_FLW_Fault;
+    CTHD_FLW_Fault.Fault_code = 0x21;
+    CTHD_FLW_Fault.Fault_detail = 0x01;
+    Interface.txObj(CTHD_FLW_Fault);
+    DataLogger.txObj(CTHD_FLW_Fault);
     if (Serial) {
       Serial.println("Could not read Cathode flow sensor");
     }
-    //EDITME write error throwing code
   }
 
   Wire.begin();  //Initialise I2C bus as a master
@@ -426,24 +442,59 @@ void loop() {
   AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
 
-  if (DataLogger.available()) {
-    uint16_t recSize = 0;
-    recSize = DataLogger.rxObj(DataLoggerqueue[DataLoggerqueue.size()], recSize);  //Put the incoming data into a circular buffer to deal with once it's all in
-  }
-  while (!(DataLoggerqueue.isEmpty())) {                                         //While there is data in the DataLoggerqueue circular buffer, deal with it
-    char CMD = DataLoggerqueue.shift();                                          //Remove the first byte of the DataLoggerqueue and put it into a char to determine the type of message
-    if (CMD == 'I') {                                                            //Data is current readings
-      Current.set = (DataLoggerqueue.shift() << 8) + DataLoggerqueue.shift();    //Take the first 2 bytes, and put them in the current setpoint variable
-      Current.sense = (DataLoggerqueue.shift() << 8) + DataLoggerqueue.shift();  //Take the next 2 bytes, and put them in the current sense variable
+//EDITME add code to deal with "command not recognised" response
+  if (DataLogger.available()) {//EDITME change to while
+    char ID = DataLogger.currentPacketID;
+
+    if (ID == 'I') {  //Current data
+      DataLogger.rxObj(Current);
+    } else if (ID == 'f') {              //Fault code
+      DataLogger.rxObj(Incoming_fault);  //EDITME write code to deal with faults
     } else {
       //EDITME Write error throwing code for "Command not recognised"
+      struct Fault_message Com_Fault;
+      Com_Fault.Fault_code = 0x01;
+      Com_Fault.Fault_detail = ID;
+      DataLogger.txObj(Com_Fault);
     }
   }
 
-  
+  if (SafetySystem.available()) {
+    char ID = SafetySystem.currentPacketID;
+
+    if (ID == 'f') {                     //fault code
+      SafetySystem.rxObj(Incoming_fault);  //EDITME write code to deal with faults
+    } else {
+      //EDITME Write error throwing code for "Command not recognised"
+      struct Fault_message Com_Fault;
+      Com_Fault.Fault_code = 0x01;
+      Com_Fault.Fault_detail = ID;
+      SafetySystem.txObj(Com_Fault);
+    }
+  }
+
+    if (Interface.available()) {
+    char ID = Interface.currentPacketID;
+
+    if (ID == 'f') {                     //fault code
+      Interface.rxObj(Incoming_fault);  //EDITME write code to deal with faults
+    } else {
+      //EDITME Write error throwing code for "Command not recognised"
+      struct Fault_message Com_Fault;
+      Com_Fault.Fault_code = 0x01;
+      Com_Fault.Fault_detail = ID;
+      Interface.txObj(Com_Fault);
+    }
+  }
+
+
 
   if (Mode == 0) {
-    //EDITME write error throwing code for no mode
+    struct Fault_message Mode_Fault;
+    Mode_Fault.Fault_code = 0x21;
+    Mode_Fault.Fault_detail = 0x01;
+    Interface.txObj(Mode_Fault);
+    DataLogger.txObj(Mode_Fault);
   } else if (Mode == 1) {  //Startup procedure
 
   } else if (Mode == 2) {  //Shutdown procedure
@@ -481,9 +532,9 @@ void loop() {
     }
     pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_output);  //Write output to PWM controller //EDITME put after fan control in case more flowrate is needed?
 
-    CLNT_T_PID.run(); //Run PID calcs for fan output values
-    for (int i=0;i<6;i++;){
-      pwm.setPWM(CLNT_FN_PWMS[i],0,CLNT_T_output) //Write fan output to PWM controller
+    CLNT_T_PID.run();  //Run PID calcs for fan output values
+    for (int i = 0; i < 6; i++;) {
+      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_T_output)  //Write fan output to PWM controller
     }
 
     //EDITME write code to check humidities and offer feedwater injection
@@ -492,15 +543,15 @@ void loop() {
 
   } else if (Mode == 4) {  //Low power (stack idle)
 
-      if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
+    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
       digitalWrite(CTHD_HTR, HIGH);
     } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
       digitalWrite(CTHD_HTR, LOW);
     }
 
-// CTHD_FLW_target = CTHD_FLW_min;                                                               //Set flow rate to minimum threshold at low current
-//     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
-    pwm.setPWM(CTHD_VLV_PWM, 0, 1);                                                                                         //write output value to PWM controller
+    // CTHD_FLW_target = CTHD_FLW_min;                                                               //Set flow rate to minimum threshold at low current
+    //     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
+    pwm.setPWM(CTHD_VLV_PWM, 0, 1);  //write output value to PWM controller
 
     AND_FLW_target = (Current.set * num_cells * 60 * 1000) / (Moles_per_litre_x_F_const_x_electrons_per_mole);  //Calculate cathode flowrate in SmLPM //EDITME check units, and deal with potential floating point problems
     if (AND_FLW_target < AND_FLW_min) { AND_FLW_target = AND_FLW_min; }                                         //Ensure flow rate stays above minimum threshold at low current
@@ -515,9 +566,9 @@ void loop() {
 
     pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_min);  //Write minimum output to PWM controller
 
-    CLNT_T_PID.run(); //Run PID calcs for fan output values
-    for (int i=0;i<6;i++;){
-      pwm.setPWM(CLNT_FN_PWMS[i],0,CLNT_T_output) //Write fan output to PWM controller
+    CLNT_T_PID.run();  //Run PID calcs for fan output values
+    for (int i = 0; i < 6; i++;) {
+      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_T_output)  //Write fan output to PWM controller
     }
 
     //EDITME write code to check humidities and offer feedwater injection
@@ -531,6 +582,4 @@ void loop() {
   } else {  //Unknown mode
     //EDITME write error throwing code for unknown mode
   }
-
-
 }

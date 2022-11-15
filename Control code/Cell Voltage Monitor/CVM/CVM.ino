@@ -344,47 +344,41 @@ void loop() {
     Write_buf_to_SD();               //Write full data buffer to SD. For speed reasons, this is a priority
   } else {                           //Other code goes in here so that write is never delayed
 
-  if(DataLogger.available())
-  {
-    //EDITME Rewrite to work based on expected incoming message structures
-    // use this variable to keep track of how many
-    // bytes we've processed from the receive buffer
-    // uint16_t recSize = 0;
+    if (DataLogger.available()) {
+      char ID = DataLogger.currentPacketID;
 
-    // recSize = myTransfer.rxObj(testStruct, recSize);
-    // Serial.print(testStruct.z);
-    // Serial.print(testStruct.y);
-    // Serial.print(" | ");
-
-    // recSize = myTransfer.rxObj(arr, recSize);
-    // Serial.println(arr);
-  }
-
-    while (Serial1.available()) {          //Detect incoming UART messages from Data logger
-      char inChar = (char)Serial1.read();  //Put incoming data into a char byte
-      if (inChar == '!') {                 //Check if the command string is complete by looking for end character
-        stringComplete1 = true;            //raise flag to show command is complete
-      } else Command1 += inChar;           //put incoming byte on end of command string
-      if (stringComplete1) {               //check if incoming command is complete
-        //EDITME Code triggered by UART0 (Data logger) commands goes in here
-        Command1 = "";  //clear command string
+      if (ID == 'r') {  //Command to reboot core 1
+      //EDITME write reboot code
       }
-      stringComplete1 = false;
     }
-    while (Serial2.available()) {          //Detect incoming UART messages from Data logger
-      char inChar = (char)Serial2.read();  //Put incoming data into a char byte
-      if (inChar == '!') {                 //Check if the command string is complete by looking for end character
-        stringComplete2 = true;            //raise flag to show command is complete
-      } else Command2 += inChar;           //put incoming byte on end of command string
-      if (stringComplete2) {               //check if incoming command is complete
-        //EDITME Code triggered by UART1 (Power controller) commands goes in here
-        if (Command2 == "Begin HF CVM") {  //Command to start high frequency read mode
-          Burst_read_flags |= 0x80;        //Set the flag requesting high frequency data acquisition
-        }
-        Command2 = "";  //clear command string
-      }
-      stringComplete2 = false;
-    }
+
+    //EDITME add all messages
+
+    // while (Serial1.available()) {          //Detect incoming UART messages from Data logger
+    //   char inChar = (char)Serial1.read();  //Put incoming data into a char byte
+    //   if (inChar == '!') {                 //Check if the command string is complete by looking for end character
+    //     stringComplete1 = true;            //raise flag to show command is complete
+    //   } else Command1 += inChar;           //put incoming byte on end of command string
+    //   if (stringComplete1) {               //check if incoming command is complete
+    //     //EDITME Code triggered by UART0 (Data logger) commands goes in here
+    //     Command1 = "";  //clear command string
+    //   }
+    //   stringComplete1 = false;
+    // }
+    // while (Serial2.available()) {          //Detect incoming UART messages from Data logger
+    //   char inChar = (char)Serial2.read();  //Put incoming data into a char byte
+    //   if (inChar == '!') {                 //Check if the command string is complete by looking for end character
+    //     stringComplete2 = true;            //raise flag to show command is complete
+    //   } else Command2 += inChar;           //put incoming byte on end of command string
+    //   if (stringComplete2) {               //check if incoming command is complete
+    //     //EDITME Code triggered by UART1 (Power controller) commands goes in here
+    //     if (Command2 == "Begin HF CVM") {  //Command to start high frequency read mode
+    //       Burst_read_flags |= 0x80;        //Set the flag requesting high frequency data acquisition
+    //     }
+    //     Command2 = "";  //clear command string
+    //   }
+    //   stringComplete2 = false;
+    // }
     //EDITME write code to deal with extra characters that might be generated on boot?
   }
 }
@@ -405,7 +399,7 @@ void loop1() {
     if (millis() - Flag_time_Hardware_in > TimeOut) { Burst_read_flags |= 0x2; }  //If it has been longer than the Time Out interval, set the TimeOut bit to 1
     Burst_read_flags |= digitalRead(In_flag_pin) << 5;                            //Read the hardware flag
 
-    if ((Burst_read_flags & 0x20)) {               //Look for hardware flag to trigger
+    if ((Burst_read_flags & 0x20)) {                //Look for hardware flag to trigger
       Burst_read_flags |= 0x10;                     //Set Hardware Out flag to 1
       Fill_data_buf();                              //Fill all of the data buffers once, so that we have some lead in data
       digitalWrite(Out_flag_pin, HIGH);             //Signal that high frequency data acquisition is occuring

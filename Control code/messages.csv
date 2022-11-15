@@ -1,20 +1,23 @@
-﻿Sender,Reciever,Message description,Structure,Command char,Packet ID (hex),"length (bytes, exc command char)",Detail
-CVM,Data Logger,CVM data,"Char ""d""; uint32_t Voltages[28]; uint32 Timestamp",d,64,116,
-CVM,Data Logger,RTC error,"Char ""c""",c,63,,
-CVM,Data Logger,Data buffer overflow,"Char ""o""",o,6F,,
-CVM,Data Logger,Request manual reboot of core 1,"Char ""R""",R,52,,
-CVM,Data Logger,SD error,"Char ""s""; ",s,73,,
-CVM,Data Logger,Cell undervoltage error,"Char ""U""; uint32_t Undervoltage_flags",U,55,4,
-CVM,Data Logger,ADC error,"Char ""a""; uint8_t ADC_ID; uint8_t error_code",a,61,,ADC_ID is a set of bit flags
-Data Logger,CVM,Reboot core 1,"Char ""r""",r,72,,
-Process controller,Data Logger,Cathode heater safety TC fault,"char ""f""; uint8_t Fault_type; uint8_t MAX31856_fault;",f,66,2,"Fault type includes which TC failed, MAX31856_fault is directly from sensor board"
-Process controller,Data Logger,Cathode flow sensor read fault,"char ""f""; uint8_t Fault_type; uint8_t CTHD_FLW_FLT",f,66,2,CTHD_FLW_FLT identifies problem
-Process controller,Data Logger,HIH6120 fault,"char ""f""; uint8_t Fault type; uint8_t HIH6120ID+fault",f,66,2,"HIH6120ID+fault identifies which HIH6120 is faulty, last 2 bits identify error"
-Process controller,Data Logger,Pressure sensor fault,"char ""f""; uint8_t Fault type; uint8_t PressureID+fault",f,66,2,"PressureID+fault identifies which pressure sensor is faulty, last 2 bits identify error"
-Process controller,Data Logger,Temperature out of bounds,"char ""T""; uint8_t Temperature_ID; uint8_t over/under",T,54,2,"Temperature_ID identifies which reading is out of bounds, over/under details if it is over or under"
-Process controller,Data Logger,Flow out of bounds,"char ""F""; uint8_t Flow_ID; uint8_t over/under",F,46,2,
-Process controller,Data Logger,Pressure out of bounds,"Char ""P""; uint8_t Pressure_ID; uint8_t over/under",P,70,2,
-Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint; uint16_t I_sense",I,49,4,
-Data logger,Process controller,Safety codes,,,,,
-Safety,Process controller,Safety codes,,,,,
-Safety,Data logger,Safety codes,,,,,
+Sender,Reciever,Message description,Structure,Command char,Packet ID (hex),"length (bytes, exc command char)",Fault codes,Detail
+CVM,Data Logger,CVM data,"Char ""d""; uint32_t Voltages[28]; uint32 Timestamp",d,64,116,,
+CVM,Data Logger,RTC error,"Char ""c""",c,63,,,
+CVM,Data Logger,Data buffer overflow,"Char ""o""",o,6F,,,
+CVM,Data Logger,Request manual reboot of core 1,"Char ""R""",R,52,,,
+CVM,Data Logger,SD error,"Char ""s""; ",s,73,,,
+CVM,Data Logger,Cell undervoltage error,"Char ""U""; uint32_t Undervoltage_flags",U,55,4,,
+CVM,Data Logger,ADC error,"Char ""a""; uint8_t ADC_ID; uint8_t error_code",a,61,,,ADC_ID is a set of bit flags
+Data Logger,CVM,Reboot core 1,"Char ""r""",r,72,,,
+Process controller,Data Logger+Interface,Cathode heater safety TC fault,"char ""f""; uint8_t Fault_code; uint8_t MAX31856_fault;",f,66,2,"0x11,0x12,0x13","Fault type includes which TC failed, MAX31856_fault is directly from sensor board"
+Process controller,Data Logger+Interface,Cathode heater safety TC won't connect,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,"0x14,0x15,0x16",
+Process controller,Data Logger+Interface,Cathode flow sensor read fault,"char ""f""; uint8_t Fault_code; uint8_t CTHD_FLW_FLT",f,66,2,0x21,CTHD_FLW_FLT identifies problem. 0x01=below minimum output
+Process controller,Data Logger+Interface,HIH6120 fault,"char ""f""; uint8_t Fault_code; uint8_t HIH6120ID+fault",f,66,2,0x31,"HIH6120ID+fault identifies which HIH6120 is faulty, last 2 bits identify error"
+Process controller,Data Logger+Interface,Pressure sensor fault,"char ""f""; uint8_t Fault_code; uint8_t PressureID+fault",f,66,2,0x41,"PressureID+fault identifies which pressure sensor is faulty, last 2 bits identify error"
+Process controller,Data Logger+Interface,Temperature out of bounds,"char ""T""; uint8_t Temperature_ID; uint8_t over/under",T,54,2,,"Temperature_ID identifies which reading is out of bounds, over/under details if it is over or under"
+Process controller,Data Logger+Interface,Flow out of bounds,"char ""F""; uint8_t Flow_ID; uint8_t over/under",F,46,2,,
+Process controller,Data Logger+Interface,Pressure out of bounds,"Char ""P""; uint8_t Pressure_ID; uint8_t over/under",P,70,2,,
+Process controller,Any (in response to a message),Command not recognised,"char ""f""; uint8_t Fault_code; uint8_t ID_recieved;",f,66,2,0x01,
+Process controller,Data Logger+Interface,No Mode selected,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x02,
+Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint; uint16_t I_sense",I,49,4,,
+Data logger,Process controller,Safety codes,"char ""f""; uint8_t Fault_code; uint8_t Fault_detail;",f,66,2,,
+Safety,Process controller,Safety codes,,,,,,
+Safety,Data logger,Safety codes,,,,,,
