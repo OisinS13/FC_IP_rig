@@ -3,6 +3,9 @@
 #include "sdios.h"
 #include "FreeStack.h"
 #include "RTClib.h"
+#include "SerialTransfer.h"
+SerialTransfer DataLogger;
+SerialTransfer LoadController;
 RTC_PCF8523 rtc;
 File32 logfile;
 
@@ -10,6 +13,8 @@ const uint8_t SD_CS_PIN = 5;
 #define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
 #define SPI_CLOCK SD_SCK_MHZ(50)
 SdFat32 SD;
+
+
 
 #define In_flag_pin 19
 #define Out_flag_pin 18
@@ -27,8 +32,8 @@ bool file_ready_flag = 0;
 
 uint16_t V_in_UART[Num_channels] = { 0 };                                                                                                                                                           //Initialise array to for low frequency acquisition including 4 bytes of timestamp
 uint32_t V_out_UART[Num_channels];                                                                                                                                                                  //Initialise uint32_t array to send uV data over UART, and save to SD
-unsigned int long StartTimefast;                                                                                                                                                                    //Timer start for high frequency acquisition
-unsigned int long StartTimeslow;                                                                                                                                                                    //Timer start for low frequency acquisition
+uint32_t StartTimefast;                                                                                                                                                                             //Timer start for high frequency acquisition
+uint32_t StartTimeslow;                                                                                                                                                                             //Timer start for low frequency acquisition
 uint16_t PD_R1_values[Num_channels] = { 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 8870, 21500, 33000, 45300 };  //R1 values for the potential dividers dropping the stacked voltages to below the ADC Vref values
                                                                                                                                                                                                     //R2 values are all 3k
 
@@ -56,6 +61,17 @@ String Command1 = "";
 bool stringComplete2 = 0;  //Flag to show incoming UART1 message is complete
 String Command2 = "";
 
+struct DATA {  //Structure to send out CVM data
+  char CMD = d;
+  uint32_t V[28] = 0;
+  uint32_t Timestamp = 0;
+} data_struct;
+
+struct ERROR {
+  char CMD = 0;
+  uint8_t detail[4] = 0;
+} error_struct;
+
 int Read_register(uint8_t Address, uint8_t Chip_select) {
   byte inByte = 0;          // incoming byte from the SPI
   unsigned int result = 0;  // result to return
@@ -73,14 +89,32 @@ int Read_register(uint8_t Address, uint8_t Chip_select) {
   return result;
 }
 
+void ErrorSend(SerialTransfer &stf, ERROR Error_struct_to_send) {
+  uint16_t n_byt = 0;
+
+  // Stuff buffer with struct
+  n_byt = stf.txObj(Error_struct_to_send, n_byt);
+
+  // Send buffer
+  stf.sendData(n_byt);
+}
+
 bool ID_check(uint16_t ID, const uint8_t Chip_select[Num_channels / 4]) {
   bool ID_flag = 1;
+  ERROR ID_CHECK_ERROR;
   for (int i = 0; i < sizeof(CS_pins); i++) {
-    if (ID != Read_register(0, Chip_select[i]))  //ID address of chip is stored at register 0
+    if (ID != Read_register(0, Chip_select[i])) {  //ID address of chip is stored at register 0
       Serial.print("ADC chip ");
-    Serial.print(i);
-    Serial.println(" ID check error");
-    ID_flag = 0;
+      Serial.print(i);
+      Serial.println(" ID check error");
+      ID_flag = 0;
+      ID_CHECK_ERROR.detail[1] |= 1 << i;
+    }
+  }
+  if (ID_CHECK_ERROR.detail[1]) {  //If a bit in the ADC ID byte has been set, there's an error, so send it out
+    ID_CHECK_ERROR.CMD = 'a';
+    ID_CHECK_ERROR.detail[2] = 1;  //Error code for ID check is 1
+    ErrorSend(DataLogger, ID_CHECK_ERROR);
   }
   return ID_flag;
 }
@@ -167,6 +201,7 @@ void Fill_data_buf() {
     } else {
       // EDITME Put in error throwing code here
 
+
       // Serial.println("Data buffer overflow!");
       // delay(10);
     }
@@ -184,13 +219,14 @@ void setup() {
   // Serial1.setFIFOSize(size_t 128); //May be required for stable UART comms
   Serial1.setPollingMode(true);  //Ensure UART0 port is listening for messages
   Serial1.begin(115200);         //Initialise UART0 port
+  DataLogger.begin(Serial1);     //Initialise Serial Transfer object for Data logger connection
 
-  Serial2.setRX(12);  //Set UART pins for UART1, to be used for Power controller connection
+  Serial2.setRX(12);  //Set UART pins for UART1, to be used for Load controller connection
   Serial2.setTX(11);
   // Serial2.setFIFOSize(size_t 128); //May be required for stable UART comms
-  Serial2.setPollingMode(true);  //Ensure UART1 port is listening for messages
-  Serial2.begin(115200);         //Initialise UART1 port
-
+  Serial2.setPollingMode(true);   //Ensure UART1 port is listening for messages
+  Serial2.begin(115200);          //Initialise UART1 port
+  LoadController.begin(Serial2);  //Initialise Serial Transfer object for Load controller connection
 
   Core0_boot_flag = 1;
   if (Serial) {
@@ -230,6 +266,8 @@ void setup1() {
   SPI1.endTransaction();
 
   while (!ID_check(0x81, CS_pins)) {}  //Check that the ADC's all read the correct address to determine if SPI lines are functional. ID of chip should be 0x81 at register 0
+  //EDITME write error throwing code
+
 
   for (int i = 0; i < Num_buffs; i++) {
     for (int j = 0; j < Num_samples; j++) {
@@ -255,6 +293,7 @@ void setup1() {
     if (USB_flag) {
       Serial.println("initialization failed!");
     }
+    //EDITME write error throwing code
   } else {
     SD_boot_flag = 1;
     if (USB_flag) {
@@ -305,6 +344,22 @@ void loop() {
     Write_buf_to_SD();               //Write full data buffer to SD. For speed reasons, this is a priority
   } else {                           //Other code goes in here so that write is never delayed
 
+  if(DataLogger.available())
+  {
+    //EDITME Rewrite to work based on expected incoming message structures
+    // use this variable to keep track of how many
+    // bytes we've processed from the receive buffer
+    // uint16_t recSize = 0;
+
+    // recSize = myTransfer.rxObj(testStruct, recSize);
+    // Serial.print(testStruct.z);
+    // Serial.print(testStruct.y);
+    // Serial.print(" | ");
+
+    // recSize = myTransfer.rxObj(arr, recSize);
+    // Serial.println(arr);
+  }
+
     while (Serial1.available()) {          //Detect incoming UART messages from Data logger
       char inChar = (char)Serial1.read();  //Put incoming data into a char byte
       if (inChar == '!') {                 //Check if the command string is complete by looking for end character
@@ -350,7 +405,7 @@ void loop1() {
     if (millis() - Flag_time_Hardware_in > TimeOut) { Burst_read_flags |= 0x2; }  //If it has been longer than the Time Out interval, set the TimeOut bit to 1
     Burst_read_flags |= digitalRead(In_flag_pin) << 5;                            //Read the hardware flag
 
-    if (!(Burst_read_flags & 0x20)) {               //Look for hardware flag to trigger
+    if ((Burst_read_flags & 0x20)) {               //Look for hardware flag to trigger
       Burst_read_flags |= 0x10;                     //Set Hardware Out flag to 1
       Fill_data_buf();                              //Fill all of the data buffers once, so that we have some lead in data
       digitalWrite(Out_flag_pin, HIGH);             //Signal that high frequency data acquisition is occuring
@@ -400,17 +455,23 @@ void loop1() {
       //EDITME write code to throw cell undervoltage errors?
       for (int i = 0; i < Num_channels; i++) {
         //Total equation here is (V_in_UART[i] * 1.8) / (4096.0) * ((PD_R1_values[i] + 3000.0) / 3000.0)*1000000;
-        V_out_UART[i] = (V_in_UART[i] * 18 * (PD_R1_values[i] + 3000) * 1000) / (4096 * 3 * 10);  //Calculate voltages (in uV) as uint32_t using R values from board pot divs
+        data_struct.V[i] = (V_in_UART[i] * 18 * (PD_R1_values[i] + 3000) * 1000) / (4096 * 3 * 10);  //Calculate voltages (in uV) as uint32_t using R values from board pot divs
       }
+      data_struct.Timestamp = StartTimeslow;
 
-      Serial1.write("Data:");  //Inform Data logger that this is a data command
-      for (int i = 0; i < Num_channels; i++) {
-        Serial1.write((byte *)&V_out_UART[i], 4);  //Send Voltages as uint32_t uV values
-        Serial1.write(",");                        //send delimeter
-        // Serial1.write(&V_in_UART, ((Num_channels + 2) * 2));  //Send uint16_t data out as binary bytes
-      }
-      Serial1.write((byte *)&StartTimeslow, 4);  //Send uS timestamp
-      Serial1.write("!");
+      uint16_t n_byt = 0;
+      n_byt = DataLogger.txObj(data_struct, n_byt);
+      DataLogger.sendData(n_byt);
+
+
+      // Serial1.write("Data:");  //Inform Data logger that this is a data command
+      // for (int i = 0; i < Num_channels; i++) {
+      //   Serial1.write((byte *)&V_out_UART[i], 4);  //Send Voltages as uint32_t uV values
+      //   Serial1.write(",");                        //send delimeter
+      //   // Serial1.write(&V_in_UART, ((Num_channels + 2) * 2));  //Send uint16_t data out as binary bytes
+      // }
+      // Serial1.write((byte *)&StartTimeslow, 4);  //Send uS timestamp
+      // Serial1.write("!");
 
       char Data_to_file[] = "\n";  //Initialise char array, beginning with a new line character
       if (!logfile.open(Filenameslow, O_RDWR | O_APPEND)) {
@@ -426,8 +487,8 @@ void loop1() {
       // Serial1.write(StartTimeslow,4); //write timestamp in uS
       // Serial1.write(",");//write delimeter so error codes can be appended
       logfile.write(&Data_to_file, j);  //Write the whole string to the file
-        logfile.sync();                //Save data to disc
-      logfile.close();                 //Close logfile
+      logfile.sync();                   //Save data to disc
+      logfile.close();                  //Close logfile
       //EDITME Write code to save errors to logfile at end of data frame
     }
   }

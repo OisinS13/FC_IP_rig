@@ -1,6 +1,13 @@
 #include <SPI.h>
 #include <Adafruit_MAX31856.h>
 #include <Adafruit_PWMServoDriver.h>
+#include "SerialTransfer.h"
+#include <CircularBuffer.h>
+#include <AutoPID.h>
+
+SerialTransfer SafetySystem;
+SerialTransfer Interface;
+SerialTransfer DataLogger;
 
 // called this way, it uses the default address 0x40
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
@@ -58,6 +65,10 @@ const uint8_t CTHD_HTR_SFTY_CS[3] = { CTHD_HTR_SFTY_TC1_CS, CTHD_HTR_SFTY_TC2_CS
 #define CTHD_VLV_PWM 3
 const uint8_t CLNT_FN_PWMS[6] = { 4, 5, 6, 7, 8, 9 };
 
+//Definitions for calculations
+#define num_cells 24
+#define Moles_per_litre_x_F_const_x_electrons_per_mole 8615
+
 const uint8_t P_sig_pins[8] = { P_1_SIG_PIN, P_2_SIG_PIN, P_3_SIG_PIN, P_4_SIG_PIN, P_5_SIG_PIN, P_6_SIG_PIN, P_7_SIG_PIN, P_8_SIG_PIN };  //Array of Pressure signal inputs
 uint8_t P_sig_flags = 0;                                                                                                                   //Flags representing if pressure signals are detected. 1 means sensor detected on that pin, 0 means no sensor detected
 uint32_t P_readings[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -65,10 +76,10 @@ uint32_t P_readings[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 uint8_t HIH6120_address[10] = { 0x27 };  //Array of expected adresses of Humidity/Temperature sensors
 uint16_t HIH6120_flags = 0;              //Flags to indicate if devices were found at relevant addresses
 uint16_t HIH6120_data_flags = 0;         //Flags to indicate of data read is "stale" (1) or "normal" (0)
-uint16_t HIH_RH_raw[10] = 0;             //Array to store RH raw data in
-uint16_t HIH_T_raw[10] = 0;              //Array to store T raw data in
-float HIH_RH[i] = 0;                     //Array to store converted RH data (as %)
-float HIH_T[i] = 0;                      //Array to store converted T data (deg C)
+uint16_t HIH_RH_raw[10] = { 0 };         //Array to store RH raw data in
+uint16_t HIH_T_raw[10] = { 0 };          //Array to store T raw data in
+float HIH_RH[10] = { 0 };                //Array to store converted RH data (as %)
+float HIH_T[10] = { 0 };                 //Array to store converted T data (deg C)
 uint16_t HIH_interval = 50;              //Time(mS) required for HIH to do data conversion, therefore time between readings
 uint32_t HIH_last_read_time = 0;
 
@@ -79,16 +90,53 @@ Adafruit_MAX31856 HTR_SFTY_TC[3] = {
   Adafruit_MAX31856(CTHD_HTR_SFTY_CS[2])
 };
 
-uint8_t HTR_SFTY_TC_fault[3] = 0;  //Create bytes to store TC amp faults
+uint8_t HTR_SFTY_TC_fault[3] = { 0 };  //Create bytes to store TC amp faults
 
 float TC_low_temp_thresh = 0.0;
 float TC_high_temp_thresh = 100.0;
-float CTHD_HTR_SFTY_TC_readings = { 0, 0, 0 };
+float CTHD_HTR_SFTY_TC_readings[3] = { 0, 0, 0 };
 
 uint16_t CTHD_FLW_reading = 0;
-uint16_t AND_FLW_reading[2] = 0;
-uint16_t AND_FLW_value[2] = 0;
+uint16_t AND_FLW_reading[2] = { 0 };
+uint16_t AND_FLW_value[2] = { 0 };
 uint8_t H2N2_flag = 0;  //0 means N2, 1 means H2
+
+float Cathode_target_T = 77.0;   //target temperature for cathode inlet
+float Cathode_T_Hysteresis = 1;  //variation from target before action is taken
+uint16_t CTHD_FLW_target = 0;    //in SLPM
+uint16_t CTHD_FLW_output = 0;    //Number between 0-4095 for PWM output
+float CTHD_FLW_PID_KP = 0.12;
+float CTHD_FLW_PID_KI = 0.03;
+float CTHD_FLW_PID_KD = 0;
+float CTHD_FLW_stoich = 2;
+uint16_t CTHD_FLW_min = 65;  //Minimum flow rate allowed, SLPM
+float CLNT_T_target = 77.0;  //target temperature for cathode inlet
+float CLNT_T_PID_KP = 0.12;
+float CLNT_T_PID_KI = 0.03;
+float CLNT_T_PID_KD = 0;
+uint16_t CLNT_FAN_output=0;
+
+AutoPID CTHD_FLW_PID(&CTHD_FLW_reading, &CTHD_FLW_target, &CTHD_FLW_output, 0, 4095, CTHD_FLW_PID_KP, CTHD_FLW_PID_KI, CTHD_FLW_PID_KD);
+AutoPID CLNT_T_PID(&CLNT_T_reading, &CLNT_T_target, &CLNT_FAN_output, 0, 4095, CLNT_T_PID_KP, CLNT_T_PID_KI, CLNT_T_PID_KD);
+
+uint16_t AND_FLW_target = 0;  //in SLPM
+uint16_t AND_FLW_output = 0;  //Number between 0-4095 for PWM output
+float AND_FLW_stoich = 2;
+uint16_t AND_FLW_min = 2;  //Minimum flow rate allowed, SLPM
+
+uint16_t CLNT_FLW_min = 800;             //Minimum coolant flow rate. No units, just pwm values from 0-4095
+uint32_t CLNT_FLW_min_current = 50000;   //Current at which the minimum coolant flow rate is applied, mA
+uint32_t CLNT_FLW_max_current = 200000;  //Current at which the maximum coolant flow rate is applied, mA
+uint16_t CLNT_FLW_output = 0;            //Output value to write to PWM
+
+
+
+CircularBuffer<int, 100> DataLoggerqueue;
+
+struct Current_data {
+  uint16_t set = 0;
+  uint16_t sense = 0;
+} Current;
 
 uint8_t Mode = 0;  //Mode of operation.
 /*
@@ -129,7 +177,7 @@ void setup() {
   delay(100);            //Give USB time to connect EDITME to shortest reliable time
   if (Serial) {
     // USB_flag = 1;  //Used so that when connected via USB, verbose status and error messages can be sent, but will still run if not connected
-    Serial.println("Cell Voltage monitor connected");
+    Serial.println("Process controller connected");
   } else {
     Serial.end();
   }
@@ -138,14 +186,16 @@ void setup() {
   while (!Serial1) {
     ;  // wait for serial port to connect to SFTY
   }
+  SafetySystem.begin(Serial1);
   if (Serial) {
     Serial.println("Safety system connected");
   }
 
-  Serial2.begin(115200);  //Connect to Power system UART
+  Serial2.begin(115200);  //Connect to Interface UART
   while (!Serial2) {
-    ;  // wait for serial port to connect to Power system
+    ;  // wait for serial port to connect to Interface
   }
+  Interface.begin(Serial2);
   if (Serial) {
     Serial.println("Load controller connected");
   }
@@ -154,6 +204,7 @@ void setup() {
   while (!Serial3) {
     ;  // wait for serial port to connect to Data
   }
+  DataLogger.begin(Serial3);
   if (Serial) {
     Serial.println("Data logger connected");
   }
@@ -293,6 +344,10 @@ void setup() {
   AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   //EDITME Write some code to test if the flow controller is working
+
+  pinMode(AND_TRC_HTR, OUTPUT);
+  pinMode(CTHD_TRC_HTR, OUTPUT);
+  pinMode(CTHD_HTR, OUTPUT);
 }
 
 void loop() {
@@ -301,7 +356,7 @@ void loop() {
     if (digitalRead(CTHD_HTR_SFTY_DRDY[i])) {                                       //Check if a reading from the Cathode heater safety thermocouple is ready
       CTHD_HTR_SFTY_TC_readings[i] = HTR_SFTY_TC[i].readThermocoupleTemperature();  //Read Cathode heater safety thermocouple
     }
-  }
+  }  //EDITME add else statement
 
 
   if (CTHD_HTR_SFTY_TC_readings[1] > TC_high_temp_thresh) {
@@ -362,7 +417,7 @@ void loop() {
 
   for (int i = 0; i < 8; i++) {
     if (P_sig_flags & (1 << i)) {
-      P_readings[i] = ((analogRead(P_sig_pins[i]) * 1000000) - 102400000) / 1024  //Convert analog reading to pressure in Pa
+      P_readings[i] = ((analogRead(P_sig_pins[i]) * 1000000) - 102400000) / 1024;  //Convert analog reading to pressure in Pa
     }
   }
 
@@ -371,5 +426,111 @@ void loop() {
   AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
 
+  if (DataLogger.available()) {
+    uint16_t recSize = 0;
+    recSize = DataLogger.rxObj(DataLoggerqueue[DataLoggerqueue.size()], recSize);  //Put the incoming data into a circular buffer to deal with once it's all in
+  }
+  while (!(DataLoggerqueue.isEmpty())) {                                         //While there is data in the DataLoggerqueue circular buffer, deal with it
+    char CMD = DataLoggerqueue.shift();                                          //Remove the first byte of the DataLoggerqueue and put it into a char to determine the type of message
+    if (CMD == 'I') {                                                            //Data is current readings
+      Current.set = (DataLoggerqueue.shift() << 8) + DataLoggerqueue.shift();    //Take the first 2 bytes, and put them in the current setpoint variable
+      Current.sense = (DataLoggerqueue.shift() << 8) + DataLoggerqueue.shift();  //Take the next 2 bytes, and put them in the current sense variable
+    } else {
+      //EDITME Write error throwing code for "Command not recognised"
+    }
+  }
+
   
+
+  if (Mode == 0) {
+    //EDITME write error throwing code for no mode
+  } else if (Mode == 1) {  //Startup procedure
+
+  } else if (Mode == 2) {  //Shutdown procedure
+
+  } else if (Mode == 3) {  //Normal power delivery
+
+    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
+      digitalWrite(CTHD_HTR, HIGH);
+    } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
+      digitalWrite(CTHD_HTR, LOW);
+    }
+
+    CTHD_FLW_target = (Current.set * num_cells * 60 * CTHD_FLW_stoich) / (O2_conc * Moles_per_litre_x_F_const_x_electrons_per_mole * 2);  //Calculate cathode flowrate in SLPM //EDITME check units, and deal with potential floating point problems
+    if (CTHD_FLW_target < CTHD_FLW_min) { CTHD_FLW_target = CTHD_FLW_min; }                                                               //Ensure flow rate stays above minimum threshold at low current
+    CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
+    pwm.setPWM(CTHD_VLV_PWM, 0, CTHD_FLW_output);                                                                                         //write output value to PWM controller
+
+    AND_FLW_target = (Current.set * num_cells * 60 * 1000) / (Moles_per_litre_x_F_const_x_electrons_per_mole);  //Calculate cathode flowrate in SmLPM //EDITME check units, and deal with potential floating point problems
+    if (AND_FLW_target < AND_FLW_min) { AND_FLW_target = AND_FLW_min; }                                         //Ensure flow rate stays above minimum threshold at low current
+    AND_FLW_output = map(AND_FLW_target, 0, 50000, 0, 4095);                                                    //convert SmLPM to PWM output value
+    pwm.setPWM(AND_FLW_CONT_PWM, 0, AND_FLW_output);                                                            //write output value to PWM controller
+
+    //EDITME write anode pressure monitoring adjust?
+
+    //EDITME write recirc pump code
+
+    //EDITME write purge interval code
+
+    if (Current.set < CLNT_FLW_min_current) {
+      CLNT_FLW_output = CLNT_FLW_min;
+    } else if (Current.set > CLNT_FLW_max_current) {
+      CLNT_FLW_output = 4095;
+    } else {
+      CLNT_FLW_output = map(Current.set, CLNT_FLW_min_current, CLNT_FLW_max_current, CLNT_FLW_min, 4095);  //linear PWM/current relation within bounds
+    }
+    pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_output);  //Write output to PWM controller //EDITME put after fan control in case more flowrate is needed?
+
+    CLNT_T_PID.run(); //Run PID calcs for fan output values
+    for (int i=0;i<6;i++;){
+      pwm.setPWM(CLNT_FN_PWMS[i],0,CLNT_T_output) //Write fan output to PWM controller
+    }
+
+    //EDITME write code to check humidities and offer feedwater injection
+
+
+
+  } else if (Mode == 4) {  //Low power (stack idle)
+
+      if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
+      digitalWrite(CTHD_HTR, HIGH);
+    } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
+      digitalWrite(CTHD_HTR, LOW);
+    }
+
+// CTHD_FLW_target = CTHD_FLW_min;                                                               //Set flow rate to minimum threshold at low current
+//     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
+    pwm.setPWM(CTHD_VLV_PWM, 0, 1);                                                                                         //write output value to PWM controller
+
+    AND_FLW_target = (Current.set * num_cells * 60 * 1000) / (Moles_per_litre_x_F_const_x_electrons_per_mole);  //Calculate cathode flowrate in SmLPM //EDITME check units, and deal with potential floating point problems
+    if (AND_FLW_target < AND_FLW_min) { AND_FLW_target = AND_FLW_min; }                                         //Ensure flow rate stays above minimum threshold at low current
+    AND_FLW_output = map(AND_FLW_target, 0, 50000, 0, 4095);                                                    //convert SmLPM to PWM output value
+    pwm.setPWM(AND_FLW_CONT_PWM, 0, AND_FLW_output);                                                            //write output value to PWM controller
+
+    //EDITME change Anode flow to pressure maintenance, instead of flow throughput?
+
+    //EDITME write recirc pump code
+
+    //EDITME write purge interval code
+
+    pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_min);  //Write minimum output to PWM controller
+
+    CLNT_T_PID.run(); //Run PID calcs for fan output values
+    for (int i=0;i<6;i++;){
+      pwm.setPWM(CLNT_FN_PWMS[i],0,CLNT_T_output) //Write fan output to PWM controller
+    }
+
+    //EDITME write code to check humidities and offer feedwater injection
+
+    //EDITME write code to detect if power is above idle threshold
+
+  } else if (Mode == 5) {  //soft e-stop
+
+  } else if (Mode == 6) {  //Hard e-stop
+
+  } else {  //Unknown mode
+    //EDITME write error throwing code for unknown mode
+  }
+
+
 }
