@@ -29,6 +29,8 @@ uint16_t V_in[Num_buffs][Num_samples][Num_channels + 3] = { 0 };  //Initialise a
 bool V_in_flag[Num_buffs] = { 0, 0, 0, 0, 0, 0, 0, 0 };           //Array of flags which indicate if a buffer has been written to (1) or saved to file (0)
 unsigned int V_write_counter = 0;                                 //Counter to indicate which buffer should be written to file next
 bool file_ready_flag = 0;
+uint32_t UV_flags = 0;           //Cell undervoltage flags
+uint32_t UV_threshold = 400000;  //Cell undervoltage threshold in uV
 
 uint16_t V_in_UART[Num_channels] = { 0 };                                                                                                                                                           //Initialise array to for low frequency acquisition including 4 bytes of timestamp
 uint32_t V_out_UART[Num_channels];                                                                                                                                                                  //Initialise uint32_t array to send uV data over UART, and save to SD
@@ -56,10 +58,10 @@ int intervalslow = 1000 / ReadFreqslow;  //interval in mS
 uint8_t Burst_read_flags = 0b00000000;  //Flags are Software (UART) request, Software Ack, Hardware In, Hardware Out, Null, Null, TimeOut(Hardware In), TimeOut(Data acquisition)
 unsigned long Flag_time_Hardware_in = 0;
 
-bool stringComplete1 = 0;  //Flag to show incoming UART0 message is complete
-String Command1 = "";
-bool stringComplete2 = 0;  //Flag to show incoming UART1 message is complete
-String Command2 = "";
+// bool stringComplete1 = 0;  //Flag to show incoming UART0 message is complete
+// String Command1 = "";
+// bool stringComplete2 = 0;  //Flag to show incoming UART1 message is complete
+// String Command2 = "";
 
 struct DATA {  //Structure to send out CVM data
   char CMD = d;
@@ -67,146 +69,11 @@ struct DATA {  //Structure to send out CVM data
   uint32_t Timestamp = 0;
 } data_struct;
 
-struct ERROR {
-  char CMD = 0;
-  uint8_t detail[4] = 0;
-} error_struct;
-
-int Read_register(uint8_t Address, uint8_t Chip_select) {
-  byte inByte = 0;          // incoming byte from the SPI
-  unsigned int result = 0;  // result to return
-  byte frame = Address << 2;
-  // Serial.print("frame to send: ");
-  // Serial.println(frame, BIN);
-  digitalWrite(Chip_select, LOW);
-  SPI1.transfer(frame);
-  result = SPI1.transfer16(0x0000);
-  digitalWrite(Chip_select, HIGH);
-  //Serial.print("Data recieved: ");
-  //Serial.print(result,HEX);
-  //Serial.print("   ");
-  //Serial.println(result,BIN);
-  return result;
-}
-
-void ErrorSend(SerialTransfer &stf, ERROR Error_struct_to_send) {
-  uint16_t n_byt = 0;
-
-  // Stuff buffer with struct
-  n_byt = stf.txObj(Error_struct_to_send, n_byt);
-
-  // Send buffer
-  stf.sendData(n_byt);
-}
-
-bool ID_check(uint16_t ID, const uint8_t Chip_select[Num_channels / 4]) {
-  bool ID_flag = 1;
-  ERROR ID_CHECK_ERROR;
-  for (int i = 0; i < sizeof(CS_pins); i++) {
-    if (ID != Read_register(0, Chip_select[i])) {  //ID address of chip is stored at register 0
-      Serial.print("ADC chip ");
-      Serial.print(i);
-      Serial.println(" ID check error");
-      ID_flag = 0;
-      ID_CHECK_ERROR.detail[1] |= 1 << i;
-    }
-  }
-  if (ID_CHECK_ERROR.detail[1]) {  //If a bit in the ADC ID byte has been set, there's an error, so send it out
-    ID_CHECK_ERROR.CMD = 'a';
-    ID_CHECK_ERROR.detail[2] = 1;  //Error code for ID check is 1
-    ErrorSend(DataLogger, ID_CHECK_ERROR);
-  }
-  return ID_flag;
-}
-
-bool Create_logfile(DateTime Log_time, char *Filename_array, bool fast) {
-  String filename_string = String(Log_time.year(), DEC) + '_';
-  if (Log_time.month() < 10) {
-    filename_string += '0' + String(Log_time.month(), DEC) + "_";
-  } else {
-    filename_string += String(Log_time.month(), DEC) + "_";
-  }
-  if (Log_time.day() < 10) {
-    filename_string += '0' + String(Log_time.day(), DEC) + "_";
-  } else {
-    filename_string += String(Log_time.day(), DEC) + "_";
-  }
-  if (Log_time.hour() < 10) {
-    filename_string += '0' + String(Log_time.hour(), DEC) + "_";
-  } else {
-    filename_string += String(Log_time.hour(), DEC) + "_";
-  }
-  if (Log_time.minute() < 10) {
-    filename_string += '0' + String(Log_time.minute(), DEC) + "_";
-  } else {
-    filename_string += String(Log_time.minute(), DEC) + "_";
-  }
-  if (Log_time.second() < 10) {
-    filename_string += '0' + String(Log_time.second(), DEC);
-  } else {
-    filename_string += String(Log_time.second(), DEC);
-  }
-  if (!fast) {
-    filename_string += "_log.txt";
-  } else {
-    filename_string += ".txt";
-  }
-  filename_string.toCharArray(Filename_array, 26);
-  Serial.print("Filename generated: ");
-  Serial.println(Filename_array);
-
-  if (!logfile.open(Filename_array, O_RDWR | O_CREAT | O_TRUNC)) {
-    Serial.println("File open failed");
-    return 0;
-  } else {
-    return 1;
-  }
-}
-
-void Write_buf_to_SD() {
-  // StartTime1 = micros(); //For checking write speed if necessary
-  logfile.write(&V_in[V_write_counter][0][0], ((Num_channels + 3) * 2) * Num_samples);
-  logfile.sync();
-  V_in_flag[V_write_counter] = false;
-  V_write_counter++;
-  if (V_write_counter > Num_buffs - 1) {
-    V_write_counter = 0;
-  }
-  // StartTime1 = micros() - StartTime1; //For checking write speed if necessary
-  // Serial.println(StartTime1);
-}
-
-void Fill_data_buf() {
-  for (int i = 0; i < Num_buffs; i++) {
-    if (!V_in_flag[i]) {
-      for (int j = 0; j < Num_samples;) {
-        if (micros() - StartTimefast > intervalfast) {
-          StartTimefast = micros();
-          for (int l = 0; l < (Num_channels / 4); l++) {
-            digitalWrite(CS_pins[l], LOW);
-            SPI1.transfer(0x5);  //Burst read of non moving average data
-            V_in[i][j][l * 4] = SPI1.transfer16(0x00);
-            V_in[i][j][(l * 4) + 1] = SPI1.transfer16(0x00);
-            V_in[i][j][(l * 4) + 2] = SPI1.transfer16(0x00);
-            V_in[i][j][(l * 4) + 3] = SPI1.transfer16(0x00);
-            digitalWrite(CS_pins[l], HIGH);
-          }
-          V_in[i][j][Num_channels] = (StartTimefast >> 16);
-          V_in[i][j][Num_channels + 1] = (StartTimefast);
-          // V_in[i][j][Num_channels + 2] = 0xFFFF;  //This is now done once for all buffers during setup for speed/efficiency
-          j++;
-        }
-      }
-      V_in_flag[i] = true;
-    } else {
-      // EDITME Put in error throwing code here
-
-
-      // Serial.println("Data buffer overflow!");
-      // delay(10);
-    }
-  }
-}
+struct Fault_message {
+  uint8_t Fault_code = 0;
+  uint8_t Fault_detail = 0;
+};
+struct Fault_message Incoming_fault;
 
 void setup() {
   Serial.begin(115200);
@@ -290,6 +157,7 @@ void setup1() {
   }
 
   if (!SD.begin(SD_CONFIG)) {
+    FaultSend(DataLogger, 'f', 0x61, 0);  //Send fault for SD initialisation fault
     if (USB_flag) {
       Serial.println("initialization failed!");
     }
@@ -313,6 +181,7 @@ void setup1() {
     RTC_flag = 1;
   }
   //EDITME Write code to throw error and ask for manual reboot of Core1 if SD or RTC boot fails
+  FaultSend(DataLogger, 'R', 0, 0);  //Send fault for ADC ID check fault
 
   DateTime boot_time = rtc.now();
 
@@ -348,8 +217,14 @@ void loop() {
       char ID = DataLogger.currentPacketID;
 
       if (ID == 'r') {  //Command to reboot core 1
-      //EDITME write reboot code
+        //EDITME write reboot code
       }
+    }
+
+    if (LoadController.available()) {
+      char ID = LoadController.currentPacketID;
+
+      //EDITME write High frequency voltage monitoring recieve code
     }
 
     //EDITME add all messages
@@ -413,9 +288,10 @@ void loop1() {
       Burst_read_flags &= ~0x10;        //Reset the Hardware out bit to 0
       digitalWrite(Out_flag_pin, LOW);  //Signal that high frequency data acquisition has stopped
 
-      if ((Burst_read_flags & 0x1)) {  //If the TimeOut bit is 1
-        // Burst_read_flags &= ~0x1;   //Reset the TimeOut bit to 0
-        Serial2.write("HF CVM timeout!");  //Tell Power controller that the reading time has timedout
+      if ((Burst_read_flags & 0x1)) {          //If the TimeOut bit is 1
+                                               // Burst_read_flags &= ~0x1;   //Reset the TimeOut bit to 0
+        FaultSend(DataLogger, 't', 2, 0);      //Tell Data Logger that the reading time has timedout
+        FaultSend(LoadController, 't', 2, 0);  //Tell Load controller that the reading time has timedout
       }
       Burst_read_flags = 0b00000000;  // Reset all flags
       logfile.close();                //Close logfile
@@ -423,11 +299,12 @@ void loop1() {
       for (byte i = 0; i < sizeof(Filenamefast) - 1; i++) {
         Filenamefast[i] = 0;  //Clear out the Filenamefast char array
       }
-    } else if ((Burst_read_flags & 0x2)) {  //Look for TimeOut trigger
-      // Burst_read_flags &= ~0x2;         //Reset the TimeOut bit to 0
-      Serial2.write("HF CVM rq timeout!");  //Tell Power controller that the request has timedout
-      Burst_read_flags = 0b00000000;        // Reset all flags
-      logfile.close();                      //Close logfile
+    } else if ((Burst_read_flags & 0x2)) {   //Look for TimeOut trigger
+                                             // Burst_read_flags &= ~0x2;         //Reset the TimeOut bit to 0
+      FaultSend(DataLogger, 't', 1, 0);      //Tell Data Logger that the request has timedout
+      FaultSend(LoadController, 't', 1, 0);  //Tell Load controller that the request has timedout
+      Burst_read_flags = 0b00000000;         // Reset all flags
+      logfile.close();                       //Close logfile
       file_ready_flag = 0;
       for (byte i = 0; i < sizeof(Filenamefast) - 1; i++) {
         Filenamefast[i] = 0;  //Clear out the Filenamefast char array
@@ -450,12 +327,22 @@ void loop1() {
       for (int i = 0; i < Num_channels; i++) {
         //Total equation here is (V_in_UART[i] * 1.8) / (4096.0) * ((PD_R1_values[i] + 3000.0) / 3000.0)*1000000;
         data_struct.V[i] = (V_in_UART[i] * 18 * (PD_R1_values[i] + 3000) * 1000) / (4096 * 3 * 10);  //Calculate voltages (in uV) as uint32_t using R values from board pot divs
+        if (data_struct.V[i] < UV_threshold) {
+          UV_flags |= 1 << i;  //Set relevant under voltage flag
+        }
       }
       data_struct.Timestamp = StartTimeslow;
 
+
+      if (UV_flags) {  //If an undervoltage flag has been tripped
+        DataLogger.txObj(UV_flags);
+        DataLogger.sendData(4, 'U'); //Send UV_flags with UV command code
+        UV_flags = 0; //Reset UV_flags
+      }
+
       uint16_t n_byt = 0;
       n_byt = DataLogger.txObj(data_struct, n_byt);
-      DataLogger.sendData(n_byt);
+      DataLogger.sendData(n_byt,'d'); //send data with command code //EDITME check buffer size
 
 
       // Serial1.write("Data:");  //Inform Data logger that this is a data command

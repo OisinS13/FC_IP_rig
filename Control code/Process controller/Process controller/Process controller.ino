@@ -95,28 +95,34 @@ float TC_low_temp_thresh = 0.0;
 float TC_high_temp_thresh = 100.0;
 float CTHD_HTR_SFTY_TC_readings[3] = { 0, 0, 0 };
 
-uint16_t CTHD_FLW_reading = 0;
+double CTHD_FLW_reading = 0;
 uint16_t AND_FLW_reading[2] = { 0 };
 uint16_t AND_FLW_value[2] = { 0 };
 uint8_t H2N2_flag = 0;  //0 means N2, 1 means H2
 
 float Cathode_target_T = 77.0;   //target temperature for cathode inlet
 float Cathode_T_Hysteresis = 1;  //variation from target before action is taken
-uint16_t CTHD_FLW_target = 0;    //in SLPM
-uint16_t CTHD_FLW_output = 0;    //Number between 0-4095 for PWM output
-float CTHD_FLW_PID_KP = 0.12;
-float CTHD_FLW_PID_KI = 0.03;
-float CTHD_FLW_PID_KD = 0;
+double CTHD_FLW_target = 0;      //in SLPM
+double CTHD_FLW_output_PID = 0;
+uint16_t CTHD_FLW_output = 0;  //Number between 0-4095 for PWM output
+double CTHD_FLW_PID_KP = 0.12;
+double CTHD_FLW_PID_KI = 0.03;
+double CTHD_FLW_PID_KD = 0;
 float CTHD_FLW_stoich = 2;
-uint16_t CTHD_FLW_min = 65;  //Minimum flow rate allowed, SLPM
-float CLNT_T_target = 77.0;  //target temperature for cathode inlet
-float CLNT_T_PID_KP = 0.12;
-float CLNT_T_PID_KI = 0.03;
-float CLNT_T_PID_KD = 0;
+uint16_t CTHD_FLW_min = 65;   //Minimum flow rate allowed, SLPM
+double CLNT_T_target = 77.0;  //target temperature for cathode inlet
+double CLNT_T_PID_KP = 0.12;
+double CLNT_T_PID_KI = 0.03;
+double CLNT_T_PID_KD = 0;
+double CLNT_FAN_output_PID = 0;
 uint16_t CLNT_FAN_output = 0;
+double CLNT_T_reading = 0;
 
-AutoPID CTHD_FLW_PID(&CTHD_FLW_reading, &CTHD_FLW_target, &CTHD_FLW_output, 0, 4095, CTHD_FLW_PID_KP, CTHD_FLW_PID_KI, CTHD_FLW_PID_KD);
-AutoPID CLNT_T_PID(&CLNT_T_reading, &CLNT_T_target, &CLNT_FAN_output, 0, 4095, CLNT_T_PID_KP, CLNT_T_PID_KI, CLNT_T_PID_KD);
+const double PWM_min = 0;
+const double PWM_max = 4095;
+
+AutoPID CTHD_FLW_PID(&CTHD_FLW_reading, &CTHD_FLW_target, &CTHD_FLW_output_PID, PWM_min, PWM_max, CTHD_FLW_PID_KP, CTHD_FLW_PID_KI, CTHD_FLW_PID_KD);
+AutoPID CLNT_T_PID(&CLNT_T_reading, &CLNT_T_target, &CLNT_FAN_output_PID, PWM_min, PWM_max, CLNT_T_PID_KP, CLNT_T_PID_KI, CLNT_T_PID_KD);
 
 uint16_t AND_FLW_target = 0;  //in SLPM
 uint16_t AND_FLW_output = 0;  //Number between 0-4095 for PWM output
@@ -211,14 +217,11 @@ void setup() {
   }
 
   for (int i = 0; i < 3; i++) {
-    pinMode(CTHD_HTR_SFTY_DRDY[i], INPUT);  //Set the TC amp DRDY pins to inputs
-    pinMode(CTHD_HTR_SFTY_FLT[i], INPUT);   //Set the TC amp FLT pins to inputs
-    if (!HTR_SFTY_TC[i].begin()) {          //Initialise thermocouple amps over SPI
-      struct Fault_message SFTY_TC_Fault;
-      SFTY_TC_Fault.Fault_code = 0x14 + i;
-      SFTY_TC_Fault.Fault_detail = 0;
-      Interface.txObj(SFTY_TC_Fault);
-      DataLogger.txObj(SFTY_TC_Fault);
+    pinMode(CTHD_HTR_SFTY_DRDY[i], INPUT);       //Set the TC amp DRDY pins to inputs
+    pinMode(CTHD_HTR_SFTY_FLT[i], INPUT);        //Set the TC amp FLT pins to inputs
+    if (!HTR_SFTY_TC[i].begin()) {               //Initialise thermocouple amps over SPI
+      FaultSend(Interface, 'f', (0x14 + i), 0);  //If they don't initialise, send out fault code over UART
+      FaultSend(DataLogger, 'f', (0x14 + i), 0);
       if (Serial) {
         Serial.print("Could not initialize cathode heater safety thermocouple ");
         Serial.println(i);
@@ -229,11 +232,8 @@ void setup() {
       HTR_SFTY_TC[i].setTempFaultThreshholds(TC_low_temp_thresh, TC_high_temp_thresh);  //Set the TC amp internal low and high temperature thresholds to trigger faults automatically
       HTR_SFTY_TC_fault[i] = HTR_SFTY_TC[i].readFault();                                //Read any stored faults on startup
       if (HTR_SFTY_TC_fault[i]) {
-        struct Fault_message SFTY_TC_Fault;
-        SFTY_TC_Fault.Fault_code = 0x11 + i;
-        SFTY_TC_Fault.Fault_detail = HTR_SFTY_TC_fault[i];
-        Interface.txObj(SFTY_TC_Fault);
-        DataLogger.txObj(SFTY_TC_Fault);
+        FaultSend(Interface, 'f', (0x11 + i), HTR_SFTY_TC_fault[i]);  //If fault detected, send out over UART
+        FaultSend(DataLogger, 'f', (0x11 + i), HTR_SFTY_TC_fault[i]);
         if (Serial) {
           if (HTR_SFTY_TC_fault[i] & MAX31856_FAULT_CJRANGE) {
             Serial.print("Cold Junction Range Fault, TC");
@@ -273,11 +273,8 @@ void setup() {
   }
 
   if (analogRead(CTHD_FLW_SIG_PIN) < Cathode_flow_sensor_minimum_threshold) {  //Flow sensor should output a minimum of 4mA, which should be read as 1V. Threshold of 190=0.928V
-    struct Fault_message CTHD_FLW_Fault;
-    CTHD_FLW_Fault.Fault_code = 0x21;
-    CTHD_FLW_Fault.Fault_detail = 0x01;
-    Interface.txObj(CTHD_FLW_Fault);
-    DataLogger.txObj(CTHD_FLW_Fault);
+    FaultSend(Interface, 'f', 0x21, 0x01);                                     //if reading is outside nominal, send out fault code
+    FaultSend(DataLogger, 'f', 0x21, 0x01);
     if (Serial) {
       Serial.println("Could not read Cathode flow sensor");
     }
@@ -329,7 +326,7 @@ void setup() {
         Serial.print(i);
         Serial.print(" at address 0x");
         Serial.println(HIH6120_address[i], HEX);
-      }
+      }  //EDITME add fault codes for T+H sensors
     }
   }
 
@@ -442,66 +439,52 @@ void loop() {
   AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
 
-//EDITME add code to deal with "command not recognised" response
-  if (DataLogger.available()) {//EDITME change to while
-    char ID = DataLogger.currentPacketID;
+  //EDITME add code to deal with "command not recognised" response
+  if (DataLogger.available()) {  //EDITME change to while
+    char ID = DataLogger.currentPacketID();
 
     if (ID == 'I') {  //Current data
       DataLogger.rxObj(Current);
     } else if (ID == 'f') {              //Fault code
       DataLogger.rxObj(Incoming_fault);  //EDITME write code to deal with faults
     } else {
-      //EDITME Write error throwing code for "Command not recognised"
-      struct Fault_message Com_Fault;
-      Com_Fault.Fault_code = 0x01;
-      Com_Fault.Fault_detail = ID;
-      DataLogger.txObj(Com_Fault);
+      FaultSend(DataLogger, 'f', 0x01, ID);
     }
   }
 
   if (SafetySystem.available()) {
-    char ID = SafetySystem.currentPacketID;
+    char ID = SafetySystem.currentPacketID();
 
-    if (ID == 'f') {                     //fault code
+    if (ID == 'f') {                       //fault code
       SafetySystem.rxObj(Incoming_fault);  //EDITME write code to deal with faults
     } else {
-      //EDITME Write error throwing code for "Command not recognised"
-      struct Fault_message Com_Fault;
-      Com_Fault.Fault_code = 0x01;
-      Com_Fault.Fault_detail = ID;
-      SafetySystem.txObj(Com_Fault);
+      FaultSend(SafetySystem, 'f', 0x01, ID);
     }
   }
 
-    if (Interface.available()) {
-    char ID = Interface.currentPacketID;
+  if (Interface.available()) {
+    char ID = Interface.currentPacketID();
 
-    if (ID == 'f') {                     //fault code
+    if (ID == 'f') {                    //fault code
       Interface.rxObj(Incoming_fault);  //EDITME write code to deal with faults
     } else {
       //EDITME Write error throwing code for "Command not recognised"
-      struct Fault_message Com_Fault;
-      Com_Fault.Fault_code = 0x01;
-      Com_Fault.Fault_detail = ID;
-      Interface.txObj(Com_Fault);
+      FaultSend(Interface, 'f', 0x01, ID);
     }
   }
 
 
 
   if (Mode == 0) {
-    struct Fault_message Mode_Fault;
-    Mode_Fault.Fault_code = 0x21;
-    Mode_Fault.Fault_detail = 0x01;
-    Interface.txObj(Mode_Fault);
-    DataLogger.txObj(Mode_Fault);
+    FaultSend(Interface, 'f', 0x02, 0);
+    FaultSend(DataLogger, 'f', 0x02, 0);
   } else if (Mode == 1) {  //Startup procedure
 
   } else if (Mode == 2) {  //Shutdown procedure
 
   } else if (Mode == 3) {  //Normal power delivery
 
-    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
+    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control //EDITME assign temperature pointers
       digitalWrite(CTHD_HTR, HIGH);
     } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
       digitalWrite(CTHD_HTR, LOW);
@@ -510,7 +493,8 @@ void loop() {
     CTHD_FLW_target = (Current.set * num_cells * 60 * CTHD_FLW_stoich) / (O2_conc * Moles_per_litre_x_F_const_x_electrons_per_mole * 2);  //Calculate cathode flowrate in SLPM //EDITME check units, and deal with potential floating point problems
     if (CTHD_FLW_target < CTHD_FLW_min) { CTHD_FLW_target = CTHD_FLW_min; }                                                               //Ensure flow rate stays above minimum threshold at low current
     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
-    pwm.setPWM(CTHD_VLV_PWM, 0, CTHD_FLW_output);                                                                                         //write output value to PWM controller
+    CTHD_FLW_output = CTHD_FLW_output_PID;
+    pwm.setPWM(CTHD_VLV_PWM, 0, CTHD_FLW_output);  //write output value to PWM controller
 
     AND_FLW_target = (Current.set * num_cells * 60 * 1000) / (Moles_per_litre_x_F_const_x_electrons_per_mole);  //Calculate cathode flowrate in SmLPM //EDITME check units, and deal with potential floating point problems
     if (AND_FLW_target < AND_FLW_min) { AND_FLW_target = AND_FLW_min; }                                         //Ensure flow rate stays above minimum threshold at low current
@@ -533,8 +517,9 @@ void loop() {
     pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_output);  //Write output to PWM controller //EDITME put after fan control in case more flowrate is needed?
 
     CLNT_T_PID.run();  //Run PID calcs for fan output values
-    for (int i = 0; i < 6; i++;) {
-      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_T_output)  //Write fan output to PWM controller
+    CLNT_FAN_output = CLNT_FAN_output_PID;
+    for (int i = 0; i < 6; i++) {
+      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_FAN_output);  //Write fan output to PWM controller
     }
 
     //EDITME write code to check humidities and offer feedwater injection
@@ -543,7 +528,7 @@ void loop() {
 
   } else if (Mode == 4) {  //Low power (stack idle)
 
-    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control
+    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control //EDITME assign temperature pointers
       digitalWrite(CTHD_HTR, HIGH);
     } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
       digitalWrite(CTHD_HTR, LOW);
@@ -567,8 +552,8 @@ void loop() {
     pwm.setPWM(CLNT_PUMP_PWM, 0, CLNT_FLW_min);  //Write minimum output to PWM controller
 
     CLNT_T_PID.run();  //Run PID calcs for fan output values
-    for (int i = 0; i < 6; i++;) {
-      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_T_output)  //Write fan output to PWM controller
+    for (int i = 0; i < 6; i++) {
+      pwm.setPWM(CLNT_FN_PWMS[i], 0, CLNT_T_output);  //Write fan output to PWM controller
     }
 
     //EDITME write code to check humidities and offer feedwater injection
@@ -580,6 +565,9 @@ void loop() {
   } else if (Mode == 6) {  //Hard e-stop
 
   } else {  //Unknown mode
-    //EDITME write error throwing code for unknown mode
+    FaultSend(Interface, 'f', 0x03, 0);
+    FaultSend(DataLogger, 'f', 0x03, 0);
   }
+
+//EDITME write code to send data to logger
 }

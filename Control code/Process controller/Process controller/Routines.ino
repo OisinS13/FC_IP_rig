@@ -64,3 +64,14 @@ bool SystemCheck() {
 
   
 }
+
+void FaultSend(SerialTransfer &stf, char ID, uint8_t FaultCode, uint8_t FaultDetail){
+      struct Fault_message Fault;
+      Fault.Fault_code = FaultCode;
+      Fault.Fault_detail = FaultDetail;
+      stf.txObj(Fault);
+      stf.sendData(2,ID);
+}
+
+
+

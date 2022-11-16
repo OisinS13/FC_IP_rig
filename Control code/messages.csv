@@ -1,11 +1,14 @@
 Sender,Reciever,Message description,Structure,Command char,Packet ID (hex),"length (bytes, exc command char)",Fault codes,Detail
 CVM,Data Logger,CVM data,"Char ""d""; uint32_t Voltages[28]; uint32 Timestamp",d,64,116,,
-CVM,Data Logger,RTC error,"Char ""c""",c,63,,,
-CVM,Data Logger,Data buffer overflow,"Char ""o""",o,6F,,,
-CVM,Data Logger,Request manual reboot of core 1,"Char ""R""",R,52,,,
-CVM,Data Logger,SD error,"Char ""s""; ",s,73,,,
+CVM,Data Logger,RTC error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x51,
+CVM,Data Logger,Data buffer overflow,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x04,
+CVM,Data Logger,Request manual reboot of core 1,"Char ""R""; uint8_t VOID; uint8_t VOID;",R,52,0,,
+CVM,Data Logger,SD initialisation error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x61,
+CVM,Data Logger,SD create logfile error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x62,
 CVM,Data Logger,Cell undervoltage error,"Char ""U""; uint32_t Undervoltage_flags",U,55,4,,
-CVM,Data Logger,ADC error,"Char ""a""; uint8_t ADC_ID; uint8_t error_code",a,61,,,ADC_ID is a set of bit flags
+CVM,Data Logger,ADC error,"char ""f""; uint8_t Fault_code; uint8_t ADC_ID;",f,66,2,0x71,ADC_ID is a set of bit flags
+CVM,Data Logger + Load Controller,High frequency request timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,,,,Timeout_type =1
+CVM,Data Logger + Load Controller,High frequency measurement timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,,,,Timeout_type =2
 Data Logger,CVM,Reboot core 1,"Char ""r""",r,72,,,
 Process controller,Data Logger+Interface,Cathode heater safety TC fault,"char ""f""; uint8_t Fault_code; uint8_t MAX31856_fault;",f,66,2,"0x11,0x12,0x13","Fault type includes which TC failed, MAX31856_fault is directly from sensor board"
 Process controller,Data Logger+Interface,Cathode heater safety TC won't connect,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,"0x14,0x15,0x16",
@@ -17,6 +20,8 @@ Process controller,Data Logger+Interface,Flow out of bounds,"char ""F""; uint8_t
 Process controller,Data Logger+Interface,Pressure out of bounds,"Char ""P""; uint8_t Pressure_ID; uint8_t over/under",P,70,2,,
 Process controller,Any (in response to a message),Command not recognised,"char ""f""; uint8_t Fault_code; uint8_t ID_recieved;",f,66,2,0x01,
 Process controller,Data Logger+Interface,No Mode selected,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x02,
+Process controller,Data Logger+Interface,Unkown Mode selected,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x03,
+Process controller,Data logger,Process data,"char ""d"";  ",d,,,,
 Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint; uint16_t I_sense",I,49,4,,
 Data logger,Process controller,Safety codes,"char ""f""; uint8_t Fault_code; uint8_t Fault_detail;",f,66,2,,
 Safety,Process controller,Safety codes,,,,,,
