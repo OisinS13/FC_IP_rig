@@ -1,0 +1,40 @@
+Data logger pseudocode
+
+core0 (Write to SD core){
+
+if (data frame complete){
+copy data frame to temporary struct
+write data frame to SD
+write error list to SD
+} else if (data frame timeout){
+
+Append error showing which data was not received
+Write data frame to SD
+write error list to SD
+}
+
+core1 (Communications core){
+
+Read in messages from: CVM;Interface;LoadController;SafetySystem;ProcessController
+
+in message receive sections{
+
+if (data){
+if (!data flag){
+Insert data into data frame
+} else if (data flag){
+raise data timeout flag
+create new struct in circular buffer
+insert data into next data frame
+}
+if (fault){
+append fault to fualt log with timestamp
+take any relevant action required
+}
+if (safety code){
+append safety code to safety log with timestamp
+take any relevant action required
+}
+}
+
+

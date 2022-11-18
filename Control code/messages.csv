@@ -26,3 +26,5 @@ Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint
 Data logger,Process controller,Safety codes,"char ""f""; uint8_t Fault_code; uint8_t Fault_detail;",f,66,2,,
 Safety,Process controller,Safety codes,,,,,,
 Safety,Data logger,Safety codes,,,,,,
+Data logger,Interface,SD initialisation error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x71,
+Data logger,Interface,SD create logfile error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x72,

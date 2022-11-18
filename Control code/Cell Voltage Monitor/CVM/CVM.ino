@@ -83,14 +83,14 @@ void setup() {
 
   Serial1.setRX(2);  //Set UART pins for UART0, to be used for Data logger connection
   Serial1.setTX(1);
-  // Serial1.setFIFOSize(size_t 128); //May be required for stable UART comms
-  Serial1.setPollingMode(true);  //Ensure UART0 port is listening for messages
-  Serial1.begin(115200);         //Initialise UART0 port
-  DataLogger.begin(Serial1);     //Initialise Serial Transfer object for Data logger connection
+  Serial1.setFIFOSize(128);  //May be required for stable UART comms
+  Serial1.setPollingMode(true);     //Ensure UART0 port is listening for messages
+  Serial1.begin(115200);            //Initialise UART0 port
+  DataLogger.begin(Serial1);        //Initialise Serial Transfer object for Data logger connection
 
   Serial2.setRX(12);  //Set UART pins for UART1, to be used for Load controller connection
   Serial2.setTX(11);
-  // Serial2.setFIFOSize(size_t 128); //May be required for stable UART comms
+  // Serial2.setFIFOSize(128); //May be required for stable UART comms
   Serial2.setPollingMode(true);   //Ensure UART1 port is listening for messages
   Serial2.begin(115200);          //Initialise UART1 port
   LoadController.begin(Serial2);  //Initialise Serial Transfer object for Load controller connection
@@ -180,8 +180,9 @@ void setup1() {
   } else {
     RTC_flag = 1;
   }
+
   //EDITME Write code to throw error and ask for manual reboot of Core1 if SD or RTC boot fails
-  FaultSend(DataLogger, 'R', 0, 0);  //Send fault for ADC ID check fault
+  //FaultSend(DataLogger, 'R', 0, 0);  //Send reboot request
 
   DateTime boot_time = rtc.now();
 
@@ -208,7 +209,7 @@ void setup1() {
 }
 
 void loop() {
-  while (!Core1_boot_flag) {}        //Check if Core1 has booted. Required in case of reboot over UART
+ 
   if (V_in_flag[V_write_counter]) {  //Check if there is a full data buffer to be written
     Write_buf_to_SD();               //Write full data buffer to SD. For speed reasons, this is a priority
   } else {                           //Other code goes in here so that write is never delayed
@@ -336,13 +337,13 @@ void loop1() {
 
       if (UV_flags) {  //If an undervoltage flag has been tripped
         DataLogger.txObj(UV_flags);
-        DataLogger.sendData(4, 'U'); //Send UV_flags with UV command code
-        UV_flags = 0; //Reset UV_flags
+        DataLogger.sendData(4, 'U');  //Send UV_flags with UV command code
+        UV_flags = 0;                 //Reset UV_flags
       }
 
       uint16_t n_byt = 0;
       n_byt = DataLogger.txObj(data_struct, n_byt);
-      DataLogger.sendData(n_byt,'d'); //send data with command code //EDITME check buffer size
+      DataLogger.sendData(n_byt, 'd');  //send data with command code //EDITME check buffer size
 
 
       // Serial1.write("Data:");  //Inform Data logger that this is a data command

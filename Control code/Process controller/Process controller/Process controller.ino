@@ -124,7 +124,7 @@ const double PWM_max = 4095;
 AutoPID CTHD_FLW_PID(&CTHD_FLW_reading, &CTHD_FLW_target, &CTHD_FLW_output_PID, PWM_min, PWM_max, CTHD_FLW_PID_KP, CTHD_FLW_PID_KI, CTHD_FLW_PID_KD);
 AutoPID CLNT_T_PID(&CLNT_T_reading, &CLNT_T_target, &CLNT_FAN_output_PID, PWM_min, PWM_max, CLNT_T_PID_KP, CLNT_T_PID_KI, CLNT_T_PID_KD);
 
-uint16_t AND_FLW_target = 0;  //in SLPM
+uint16_t AND_FLW_target = 0;  //in SmLPM
 uint16_t AND_FLW_output = 0;  //Number between 0-4095 for PWM output
 float AND_FLW_stoich = 2;
 uint16_t AND_FLW_min = 2;  //Minimum flow rate allowed, SLPM
