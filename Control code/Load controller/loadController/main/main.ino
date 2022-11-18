@@ -3,9 +3,8 @@
 #include "SerialTransfer.h"
 RTC_PCF8523 rtc;
 
-
-SerialTransfer intf_stf;
-SerialTransfer data_stf;
+SerialTransfer DataLogger;
+SerialTransfer CellVoltageMonitor;
 
 
 // Program states:
@@ -53,30 +52,39 @@ bool load_flag   = false;
 bool short_flag  = false;
 bool USB_flag    = false;
 
+// ADC channels
+uint16_t voltage_spike = 0;
+uint16_t voltage       = 0;
+uint16_t bank_current  = 0;
 
 
 
-// interface packet
+// CVM packet
 struct PKT {
   char cmd;
   bool flag;
-  int  value;
-} pkt;
+  uint16_t value;
+} rx_msg, tx_msg;
 
 
 
 
 // Data packet
 struct DATA {
-  int I_ref;
-  int V_ref;
-  int P_ref;
-  int V_fc;
-  int V_fc_spike;
-  int I_monitor;
-  int I_clamp;
-  int op_mode;
-  int time_stamp;
+
+  char cmd;
+
+  uint32_t I_ref;
+  uint32_t V_ref;
+  uint32_t P_ref;
+  uint32_t V_fc;
+  uint32_t V_fc_spike;
+  uint32_t I_monitor;
+  uint32_t I_clamp;
+  uint32_t time_stamp;
+
+  uint8_t  op_mode;
+
   bool alarm_1;
   bool alarm_2;
   bool alarm_ext;
@@ -86,13 +94,12 @@ struct DATA {
 
 
 
-
 // Pin specificaton
 #define SDA_0_pin         0
 #define SCL_0_pin         1
 #define CLK_pin           2
-#define MOSI_pin          3
-#define MISO_pin          4
+#define MOSI_pin          3 // (TX)
+#define MISO_pin          4 // (RX)
 #define in_flag_pin       5
 #define out_flag_pin      6
 #define igbt_1_pin        7
@@ -119,9 +126,7 @@ struct DATA {
 // boot core 0
 void setup() {
   Serial.begin(115200);
-  while (!Serial) {
-    ;  // wait for serial port to connect. Needed for native USB
-  }
+
   USB_flag = true;
   Serial.println("Load controller connected");
 
@@ -130,17 +135,16 @@ void setup() {
   Serial1.setTX(TX_0_pin);
   Serial1.setPollingMode(true);
   Serial1.begin(115200);
-  intf_stf.begin(Serial1);
+  CellVoltageMonitor.begin(Serial1);
 
   //Set pins for I2C
-  Wire.setSDA(SDA_0_pin);
-  Wire.setSCL(SCL_0_pin);
+  //  Wire.setSDA(SDA_0_pin);
+  //  Wire.setSCL(SCL_0_pin);
 
-  // PWM frequency
-  analogWriteFreq(PWM_freq);
-  analogWriteRange(PWM_range);
+
 
   // Pinmodes
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(load_pin,          OUTPUT);
   pinMode(CC_pin,            OUTPUT);
   pinMode(CV_pin,            OUTPUT);
@@ -151,6 +155,27 @@ void setup() {
   pinMode(CS_pin,       OUTPUT_12MA);
   pinMode(in_flag_pin,        INPUT);
   pinMode(out_flag_pin, OUTPUT_12MA);
+  pinMode(set_alarm_pin,     OUTPUT);
+  pinMode(igbt_1_pin,        OUTPUT);
+  pinMode(igbt_2_pin,        OUTPUT);
+
+
+  // PWM frequency
+  analogWriteFreq(PWM_freq);
+  analogWriteRange(PWM_range);
+
+  // SPI setup
+  //Set the correct SPI pins for the SPI
+  SPI.setSCK(CLK_pin);
+  SPI.setTX(MOSI_pin);
+  SPI.setRX(MISO_pin);
+  SPI.setCS(1);
+  digitalWrite(CS_pin, HIGH);
+
+  SPI.begin(0);
+  SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+  SPI.endTransaction();
+
 
   // initial outputs
   digitalWrite(set_alarm_pin, HIGH); // Alarm is activated by pulling low
@@ -162,7 +187,10 @@ void setup() {
   Serial2.setTX(TX_1_pin);
   Serial2.setPollingMode(true);
   Serial2.begin(115200);
-  data_stf.begin(Serial2);
+  DataLogger.begin(Serial2);
+
+  // running
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 
@@ -179,30 +207,9 @@ void setup1() {
 
 
 void loop() {
-  
-  // read alarms
-  statusAlarm1();
-  statusAlarm2();
 
-  // write to interface if alarms are triggered
-  if (alarm_1) {
-    msgWrite(intf_stf, 'A', true, 1);
-  }
-  if (alarm_2) {
-    msgWrite(intf_stf, 'A', true, 2);
-  }
 
-  // read msg's from serial
-  msgRead();
 
-  // Collect data
-  aggData();
-
-  // send data every 10 ms
-  if (millis() - data_time > data_interval) {
-    dataWrite();
-    data_time = millis();
-  }
 }
 
 
