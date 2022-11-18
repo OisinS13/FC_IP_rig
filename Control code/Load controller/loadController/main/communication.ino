@@ -1,45 +1,42 @@
 // read serial
 void msgRead() {
   // check messages from interface
-  if (intf_stf.available()) {
+  if (CellVoltageMonitor.available()) {
     uint16_t n_byt = 0;
-    n_byt = intf_stf.rxObj(pkt, n_byt);
+    n_byt = CellVoltageMonitor.rxObj(rx_msg, n_byt);
 
     // Parse message
-    msgParse(pkt.cmd, pkt.flag, pkt.value);
-  }
-  
-  // check messages from data logger
-  if (data_stf.available()) {
-    uint16_t n_byt = 0;
-    n_byt = data_stf.rxObj(pkt, n_byt);
-
-    // Parse message
-    msgParse(pkt.cmd, pkt.flag, pkt.value);
+    msgParse(rx_msg.cmd, rx_msg.flag, rx_msg.value);
   }
 }
+
+
 
 void msgWrite(SerialTransfer &stf, char cmd, bool flag, uint32_t value) {
   uint16_t n_byt = 0;
 
   // Set struct values
-  pkt.cmd   = cmd;
-  pkt.flag  = flag;
-  pkt.value = value;
+  tx_msg.cmd   = cmd;
+  tx_msg.flag  = flag;
+  tx_msg.value = value;
 
   // Stuff buffer with struct
-  n_byt = stf.txObj(pkt, n_byt);
+  n_byt = stf.txObj(tx_msg, n_byt);
 
   // Send buffer
   stf.sendData(n_byt);
 }
 
+
+
 // write data to logger
 void dataWrite() {
   uint16_t n_byt = 0;
-  n_byt = data_stf.txObj(data, n_byt);
-  data_stf.sendData(n_byt);
+  n_byt = DataLogger.txObj(data, n_byt);
+  DataLogger.sendData(n_byt);
 }
+
+
 
 void msgParse(char cmd, bool flag, uint32_t value) {
   // Set Load on/off
@@ -57,10 +54,6 @@ void msgParse(char cmd, bool flag, uint32_t value) {
     setRefCurrent(value);
   }
 
-  // short-circuit
-  if (cmd == 'S') {
-    setShortCircuitFlag(value);
-  }
 
   // external alarm
   if (cmd == 'A') {
@@ -70,5 +63,10 @@ void msgParse(char cmd, bool flag, uint32_t value) {
   // synch timers
   if (cmd == 'T') {
     setRefTime(value);
+  }
+
+  // send ack
+  if (cmd == 'P') {
+    msgWrite(CellVoltageMonitor, 'P', true, 0);
   }
 }
