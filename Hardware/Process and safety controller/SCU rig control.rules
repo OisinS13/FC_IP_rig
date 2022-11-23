@@ -1,0 +1,146 @@
+
+(rules PCB SCU rig control
+  (snap_angle 
+    fortyfive_degree
+  )
+  (autoroute_settings
+    (fanout off)
+    (autoroute on)
+    (postroute on)
+    (vias on)
+    (via_costs 50)
+    (plane_via_costs 5)
+    (start_ripup_costs 100)
+    (start_pass_no 6158)
+    (layer_rule F.Cu
+      (active on)
+      (preferred_direction horizontal)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 2.8)
+    )
+    (layer_rule B.Cu
+      (active on)
+      (preferred_direction vertical)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 1.6)
+    )
+  )
+  (rule
+    (width 250.0)
+    (clear 250.2)
+    (clear 125.0 (type smd_to_turn_gap))
+    (clear 300.2 (type default_"FET_SIG"))
+    (clear 500.2 (type default_PWR))
+    (clear 62.6 (type smd_smd))
+    (clear 300.2 (type smd_"FET_SIG"))
+    (clear 500.2 (type smd_PWR))
+    (clear 300.2 (type "kicad_default"_"FET_SIG"))
+    (clear 500.2 (type "kicad_default"_PWR))
+    (clear 300.2 (type "FET_SIG"_"FET_SIG"))
+    (clear 500.2 (type "FET_SIG"_PWR))
+    (clear 500.2 (type PWR_PWR))
+  )
+  (padstack "Via[0-1]_800:400_um"
+    (shape
+      (circle F.Cu 800.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 800.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (via 
+    "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+  )
+  (via 
+    "Via[0-1]_800:400_um-kicad_default" "Via[0-1]_800:400_um" "kicad_default"
+  )
+  (via 
+    "Via[0-1]_800:400_um-FET_SIG" "Via[0-1]_800:400_um" "FET_SIG"
+  )
+  (via 
+    "Via[0-1]_800:400_um-PWR" "Via[0-1]_800:400_um" PWR
+  )
+  (via_rule
+    default "Via[0-1]_800:400_um"
+  )
+  (via_rule
+    "kicad_default" "Via[0-1]_800:400_um-kicad_default"
+  )
+  (via_rule
+    "FET_SIG" "Via[0-1]_800:400_um-FET_SIG"
+  )
+  (via_rule
+    PWR "Via[0-1]_800:400_um-PWR"
+  )
+  (class default
+    "AND_FLW_CONT_SIG" "CTHD_HTR_SFTY_TC1_DRDY" "CTHD_HTR_SFTY_TC1_FLT" "CTHD_HTR_SFTY_TC1_CS" "SPI_MISO" "SPI_MOSI" "SPI_SCK" "CTHD_HTR_SFTY_TC2_DRDY"
+    "CTHD_HTR_SFTY_TC2_FLT" "CTHD_HTR_SFTY_TC2_CS" "CTHD_HTR_SFTY_TC3_DRDY" "CTHD_HTR_SFTY_TC3_FLT" "CTHD_HTR_SFTY_TC3_CS" "CTHD_FLW_SIG" "CTHD_FLW_PNP" "I2C_SDA"
+    "I2C_SCL" "P_1_SIG" "P_3_SIG" "P_5_SIG" "P_7_SIG" "P_2_SIG" "P_4_SIG" "P_6_SIG"
+    "P_8_SIG" "DATA_SERIAL_CS" "SFTY_TX" "SFTY_RX" "IPU_FLAG" "LOAD_TX" "LOAD_RX" "AND_FLW_SENSE_SIG_2"
+    "AND_FLW_12VDC_OUT" "AND_FLW_VLV_OFF" "AND_FLW_5VDC_REF" "unconnected-(J30-Pad6)" "AND_FLW_PURGE" "AND_FLW_SENSE_SIG" "unconnected-(Process_MCU1-PadA11)" "unconnected-(Process_MCU1-PadA12)"
+    "unconnected-(Process_MCU1-PadA13)" "unconnected-(Process_MCU1-PadA14)" "unconnected-(Process_MCU1-PadA15)" "unconnected-(Process_MCU1-PadAREF)" "unconnected-(Process_MCU1-PadD0)" "unconnected-(Process_MCU1-PadD1)" "unconnected-(Process_MCU1-PadD2)" "unconnected-(Process_MCU1-PadD4)"
+    "unconnected-(Process_MCU1-PadD5)" "unconnected-(Process_MCU1-PadD6)" "unconnected-(Process_MCU1-PadD7)" "unconnected-(Process_MCU1-PadD8)" "unconnected-(Process_MCU1-PadD9)" "unconnected-(Process_MCU1-PadD10)" "unconnected-(Process_MCU1-PadD11)" "unconnected-(Process_MCU1-PadD12)"
+    "unconnected-(Process_MCU1-PadD13)" "DATA_TX_out" "DATA_RX_out" "unconnected-(Process_MCU1-PadD20)" "unconnected-(Process_MCU1-PadD21)" "unconnected-(Process_MCU1-PadD44)" "unconnected-(Process_MCU1-PadD45)" "unconnected-(Process_MCU1-PadD46)"
+    "unconnected-(Process_MCU1-PadD48)" "unconnected-(Process_MCU1-PadD49)" "unconnected-(Process_MCU1-PadD50)" "unconnected-(Process_MCU1-PadD51)" "unconnected-(Process_MCU1-PadD52)" "unconnected-(Process_MCU1-PadD53)" "unconnected-(Process_MCU1-PadIORF)" "unconnected-(Process_MCU1-PadRST1)"
+    "unconnected-(Process_MCU1-PadRST2)" "unconnected-(Process_MCU1-PadVIN)" "Net-(R3-Pad1)" "PWM_OE" "unconnected-(U1-Pad10)" "unconnected-(U1-Pad11)" "unconnected-(U1-Pad12)" "unconnected-(U1-Pad13)"
+    "unconnected-(U1-Pad14)" "unconnected-(U1-Pad15)" "H2_sense_1" "H2_sense_3" "H2_sense_5" "H2_sense_7" "H2_sense_9" "Net-(J52-Pad1)"
+    "Net-(J53-Pad1)" "Net-(J54-Pad1)" "Net-(J55-Pad1)" "Net-(J56-Pad1)" "Net-(J57-Pad1)" "Net-(J58-Pad1)" "Net-(J59-Pad1)" "Net-(J60-Pad1)"
+    "H2_sense_2" "H2_sense_4" "H2_sense_6" "H2_sense_8" "H2_sense_10" "unconnected-(XA1-Pad3V3)" "unconnected-(XA1-Pad5V2)" "unconnected-(XA1-PadA10)"
+    "unconnected-(XA1-PadA11)" "unconnected-(XA1-PadA12)" "unconnected-(XA1-PadA13)" "unconnected-(XA1-PadA14)" "unconnected-(XA1-PadA15)" "unconnected-(XA1-PadAREF)" "unconnected-(XA1-PadD0)" "unconnected-(XA1-PadD1)"
+    "unconnected-(XA1-PadD3)" "unconnected-(XA1-PadD4)" "unconnected-(XA1-PadD5)" "unconnected-(XA1-PadD6)" "unconnected-(XA1-PadD7)" "unconnected-(XA1-PadD8)" "unconnected-(XA1-PadD9)" "unconnected-(XA1-PadD10)"
+    "unconnected-(XA1-PadD11)" "unconnected-(XA1-PadD12)" "unconnected-(XA1-PadD13)" "unconnected-(XA1-PadD14)" "unconnected-(XA1-PadD15)" "unconnected-(XA1-PadD16)" "unconnected-(XA1-PadD17)" "unconnected-(XA1-PadD20)"
+    "unconnected-(XA1-PadD21)" "unconnected-(XA1-PadD22)" "unconnected-(XA1-PadD23)" "unconnected-(XA1-PadD24)" "unconnected-(XA1-PadD25)" "unconnected-(XA1-PadD26)" "unconnected-(XA1-PadD27)" "unconnected-(XA1-PadD28)"
+    "unconnected-(XA1-PadD29)" "unconnected-(XA1-PadD30)" "unconnected-(XA1-PadD31)" "unconnected-(XA1-PadD32)" "unconnected-(XA1-PadD33)" "unconnected-(XA1-PadD34)" "unconnected-(XA1-PadD35)" "unconnected-(XA1-PadD36)"
+    "unconnected-(XA1-PadD37)" "unconnected-(XA1-PadD38)" "unconnected-(XA1-PadD39)" "unconnected-(XA1-PadD40)" "unconnected-(XA1-PadD41)" "unconnected-(XA1-PadD42)" "unconnected-(XA1-PadD43)" "unconnected-(XA1-PadD44)"
+    "unconnected-(XA1-PadD45)" "unconnected-(XA1-PadD46)" "unconnected-(XA1-PadD49)" "unconnected-(XA1-PadD50)" "unconnected-(XA1-PadD51)" "unconnected-(XA1-PadD52)" "unconnected-(XA1-PadD53)" "unconnected-(XA1-PadIORF)"
+    "unconnected-(XA1-PadMISO)" "unconnected-(XA1-PadMOSI)" "unconnected-(XA1-PadRST1)" "unconnected-(XA1-PadRST2)" "unconnected-(XA1-PadSCK)" "unconnected-(XA1-PadSCL)" "unconnected-(XA1-PadSDA)" "SFTY_TX_out"
+    "SFTY_RX_out" "Net-(J70-Pad2)"
+    (clearance_class default)
+    (via_rule default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class "kicad_default"
+    (clearance_class "kicad_default")
+    (via_rule kicad_default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class "FET_SIG"
+    GNDD +5VD "AND_TRC_HTR" "CTHD_TRC_HTR" "CTHD_BLWR" "CTHD_HTR" "AND_PURGE_SLND_SIG" "AND_N2_SLND_SIG"
+    "AND_H2_SLND_SIG" "CTHD_SLND_SIG" "AND_HMD_FEED_VLV" "CTHD_HMD_FEED_VLV" "HMD_FEED_PUMP_SIG" "AND_RECIRC_PWM" "CLNT_FN_1_PWM" "CLNT_FN_4_PWM"
+    "CTHD_VLV_PWM" "CLNT_FN_2_PWM" "CLNT_FN_5_PWM" "CLNT_PUMP_PWM" "CLNT_FN_3_PWM" "CLNT_FN_6_PWM" "V_sniff" +5VL
+    "Interlock_signal" "Net-(J69-Pad2)" "AND_H2_SLND_SIG_SFTY" "AND_N2_SLND_SIG_SFTY" "Net-(J71-Pad1)"
+    (clearance_class "FET_SIG")
+    (via_rule FET_SIG)
+    (rule
+      (width 500.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class PWR
+    +3V0 +12V +24V "Net-(J31-Pad2)" "Net-(J32-Pad2)" "Net-(J33-Pad2)" "Net-(J34-Pad2)" "Net-(J35-Pad2)"
+    "Net-(J36-Pad2)" "Net-(J37-Pad2)" "Net-(J38-Pad2)" "Net-(J39-Pad2)" "Net-(J40-Pad2)" "Net-(J41-Pad2)" "Net-(J42-Pad2)" "Net-(J43-Pad2)"
+    "Net-(J44-Pad2)" "Net-(J45-Pad2)" "Net-(J46-Pad2)" GNDPWR +5VP GNDS "Net-(J68-Pad1)" "Net-(J68-Pad2)"
+    "Net-(J69-Pad1)"
+    (clearance_class PWR)
+    (via_rule PWR)
+    (rule
+      (width 1000.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+)

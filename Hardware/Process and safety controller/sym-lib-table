@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "SCU-rig-control-rescue")(type "Legacy")(uri "${KIPRJMOD}/SCU rig control-rescue.lib")(options "")(descr ""))
+)
