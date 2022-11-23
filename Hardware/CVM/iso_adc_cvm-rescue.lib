@@ -1,0 +1,73 @@
+EESchema-LIBRARY Version 2.4
+#encoding utf-8
+#
+# 1990119-SamacSys_Parts
+#
+DEF 1990119-SamacSys_Parts J 0 30 Y Y 1 F N
+F0 "J" 750 300 50 H V L CNN
+F1 "1990119-SamacSys_Parts" 750 200 50 H V L CNN
+F2 "1990119" 750 100 50 H I L CNN
+F3 "https://www.phoenixcontact.com/online/portal/us/?uri=pxc-oc-itemdetail:pid=1990119&library=usen&pcck=P-11-01-05&tab=1&selectedCategory=ALL" 750 0 50 H I L CNN
+F4 "Fixed Terminal Blocks PTSA 0.5/13-2.5-Z 13P 2.5MM 45DEG" 750 -100 50 H I L CNN "Description"
+F5 "13.1" 750 -200 50 H I L CNN "Height"
+F6 "651-1990119" 750 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/Phoenix-Contact/1990119?qs=eiqBpq341KUg%252B0BYI4q9ww%3D%3D" 750 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "Phoenix Contact" 750 -500 50 H I L CNN "Manufacturer_Name"
+F9 "1990119" 750 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+P 5 0 1 6 200 100 700 100 700 -700 200 -700 200 100 N
+X 1 1 900 0 200 L 50 50 0 0 P
+X 10 10 0 -400 200 R 50 50 0 0 P
+X 11 11 900 -500 200 L 50 50 0 0 P
+X 12 12 0 -500 200 R 50 50 0 0 P
+X 13 13 900 -600 200 L 50 50 0 0 P
+X 2 2 0 0 200 R 50 50 0 0 P
+X 3 3 900 -100 200 L 50 50 0 0 P
+X 4 4 0 -100 200 R 50 50 0 0 P
+X 5 5 900 -200 200 L 50 50 0 0 P
+X 6 6 0 -200 200 R 50 50 0 0 P
+X 7 7 900 -300 200 L 50 50 0 0 P
+X 8 8 0 -300 200 R 50 50 0 0 P
+X 9 9 900 -400 200 L 50 50 0 0 P
+ENDDRAW
+ENDDEF
+#
+# MAX22531AAP+-SamacSys_Parts
+#
+DEF MAX22531AAP+-SamacSys_Parts IC 0 30 Y Y 1 F N
+F0 "IC" 1150 300 50 H V L CNN
+F1 "MAX22531AAP+-SamacSys_Parts" 1150 200 50 H V L CNN
+F2 "SOP65P778X199-20N" 1150 100 50 H I L CNN
+F3 "https://datasheets.maximintegrated.com/en/ds/MAX22530.pdf" 1150 0 50 H I L CNN
+F4 "Field-Side Self-Powered, 4-Channel, 12-bit, Isolated ADC, 20-pin SSOP" 1150 -100 50 H I L CNN "Description"
+F5 "1.99" 1150 -200 50 H I L CNN "Height"
+F6 "700-MAX22531AAP+" 1150 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/Maxim-Integrated/MAX22531AAP%2b?qs=doiCPypUmgFZ7xzUXZ7H2g%3D%3D" 1150 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "Maxim Integrated" 1150 -500 50 H I L CNN "Manufacturer_Name"
+F9 "MAX22531AAP+" 1150 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+P 5 0 1 6 200 100 1100 100 1100 -1000 200 -1000 200 100 N
+X REF 1 0 0 200 R 50 50 0 0 P
+X GNDF 10 0 -900 200 R 50 50 0 0 P
+X GNDL 11 1300 -900 200 L 50 50 0 0 P
+X VDDPL 12 1300 -800 200 L 50 50 0 0 P
+X VDDL 13 1300 -700 200 L 50 50 0 0 P
+X COUT1 14 1300 -600 200 L 50 50 0 0 P
+X COUT2 15 1300 -500 200 L 50 50 0 0 P
+X SDO 16 1300 -400 200 L 50 50 0 0 P
+X SDI 17 1300 -300 200 L 50 50 0 0 P
+X SCLK 18 1300 -200 200 L 50 50 0 0 P
+X ~{CS} 19 1300 -100 200 L 50 50 0 0 P
+X AGND_1 2 0 -100 200 R 50 50 0 0 P
+X ~{INT} 20 1300 0 200 L 50 50 0 0 P
+X AIN1 3 0 -200 200 R 50 50 0 0 P
+X AIN2 4 0 -300 200 R 50 50 0 0 P
+X AGND_2 5 0 -400 200 R 50 50 0 0 P
+X AIN3 6 0 -500 200 R 50 50 0 0 P
+X AIN4 7 0 -600 200 R 50 50 0 0 P
+X AGND_3 8 0 -700 200 R 50 50 0 0 P
+X VDDF 9 0 -800 200 R 50 50 0 0 P
+ENDDRAW
+ENDDEF
+#
+#End Library

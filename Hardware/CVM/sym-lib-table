@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "iso_adc_cvm-rescue")(type "Legacy")(uri "${KIPRJMOD}/iso_adc_cvm-rescue.lib")(options "")(descr ""))
+)

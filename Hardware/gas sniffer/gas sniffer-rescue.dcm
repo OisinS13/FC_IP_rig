@@ -1,0 +1,15 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP LM317MBTG-SamacSys_Parts
+F http://www.onsemi.com/pub/Collateral/LM317M-D.PDF
+$ENDCMP
+#
+$CMP PT15NV15-102A1010-S-SamacSys_Parts
+F https://www.mouser.de/datasheet/2/18/1/14_PT15v03-1915311.pdf
+$ENDCMP
+#
+$CMP SGAS701-SamacSys_Parts
+F https://componentsearchengine.com/Datasheets/1/SGAS701.pdf
+$ENDCMP
+#
+#End Doc Library

@@ -1,0 +1,11 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP 1990119-SamacSys_Parts
+F https://www.phoenixcontact.com/online/portal/us/?uri=pxc-oc-itemdetail:pid=1990119&library=usen&pcck=P-11-01-05&tab=1&selectedCategory=ALL
+$ENDCMP
+#
+$CMP MAX22531AAP+-SamacSys_Parts
+F https://datasheets.maximintegrated.com/en/ds/MAX22530.pdf
+$ENDCMP
+#
+#End Doc Library

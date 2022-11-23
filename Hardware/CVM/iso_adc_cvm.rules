@@ -1,0 +1,95 @@
+
+(rules PCB iso_adc_cvm
+  (snap_angle 
+    fortyfive_degree
+  )
+  (autoroute_settings
+    (fanout off)
+    (autoroute on)
+    (postroute on)
+    (vias on)
+    (via_costs 50)
+    (plane_via_costs 5)
+    (start_ripup_costs 100)
+    (start_pass_no 15617)
+    (layer_rule F.Cu
+      (active on)
+      (preferred_direction vertical)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 2.2)
+    )
+    (layer_rule B.Cu
+      (active on)
+      (preferred_direction horizontal)
+      (preferred_direction_trace_costs 1.0)
+      (against_preferred_direction_trace_costs 1.9)
+    )
+  )
+  (rule
+    (width 250.0)
+    (clear 200.2)
+    (clear 125.0 (type smd_to_turn_gap))
+    (clear 50.0 (type smd_smd))
+  )
+  (padstack "Via[0-1]_800:400_um"
+    (shape
+      (circle F.Cu 800.0 0.0 0.0)
+    )
+    (shape
+      (circle B.Cu 800.0 0.0 0.0)
+    )
+    (attach off)
+  )
+  (via 
+    "Via[0-1]_800:400_um" "Via[0-1]_800:400_um" default
+  )
+  (via 
+    "Via[0-1]_800:400_um-kicad_default" "Via[0-1]_800:400_um" "kicad_default"
+  )
+  (via_rule
+    default "Via[0-1]_800:400_um"
+  )
+  (via_rule
+    "kicad_default" "Via[0-1]_800:400_um-kicad_default"
+  )
+  (class default
+    "unconnected-(A1-Pad1)" +3.3V "unconnected-(A1-Pad3)" GNDD "unconnected-(A1-Pad5)" "unconnected-(A1-Pad7)" "unconnected-(A1-Pad8)" "SD_SPI_CS"
+    "unconnected-(A1-Pad10)" "SD_SPI_CLK" "SD_SPI_MOSI" "SD_SPI_MISO" "unconnected-(A1-Pad14)" "unconnected-(A1-Pad15)" "unconnected-(A1-Pad16)" "I2C_SDA"
+    "I2C_SCL" "unconnected-(A1-Pad19)" "unconnected-(A1-Pad20)" "unconnected-(A1-Pad21)" "unconnected-(A1-Pad24)" "unconnected-(A1-Pad25)" "unconnected-(A1-Pad26)" "unconnected-(A1-Pad27)"
+    "unconnected-(A1-Pad28)" "Cell_9" "Cell_8" "Cell_5" "Cell_4" "Net-(C3-Pad1)" "Net-(C4-Pad1)" "Net-(C5-Pad1)"
+    "Net-(C6-Pad1)" "Net-(C7-Pad1)" "Net-(C8-Pad1)" "Cell_1" "Cell_0" "Net-(C10-Pad1)" "Net-(C11-Pad1)" "Net-(C12-Pad1)"
+    "Net-(C13-Pad1)" "Net-(C14-Pad1)" "Net-(C15-Pad1)" "Net-(C19-Pad1)" "Net-(C21-Pad1)" "Net-(C23-Pad1)" "ADC_3_CS" "ADC_2_CS"
+    "ADC_1_CS" "Cell_21" "Cell_20" "Net-(C29-Pad1)" "Net-(C30-Pad1)" "Net-(C31-Pad1)" "Cell_17" "Cell_16"
+    "Cell_13" "Cell_12" "Net-(C34-Pad1)" "Net-(C35-Pad1)" "Net-(C36-Pad1)" "Net-(C37-Pad1)" "Net-(C38-Pad1)" "Net-(C39-Pad1)"
+    "Net-(C40-Pad1)" "Net-(C41-Pad1)" "Net-(C42-Pad1)" "Net-(C46-Pad1)" "Net-(C48-Pad1)" "Net-(C50-Pad1)" "ADC_6_CS" "ADC_5_CS"
+    "ADC_4_CS" "unconnected-(IC1-Pad14)" "unconnected-(IC1-Pad15)" "ADC_SPI_MISO" "ADC_SPI_MOSI" "ADC_SPI_CLK" "ADC_3_int" "unconnected-(IC2-Pad14)"
+    "unconnected-(IC2-Pad15)" "ADC_2_int" "unconnected-(IC3-Pad14)" "unconnected-(IC3-Pad15)" "ADC_1_int" "unconnected-(IC4-Pad14)" "unconnected-(IC4-Pad15)" "ADC_6_int"
+    "unconnected-(IC5-Pad14)" "unconnected-(IC5-Pad15)" "ADC_5_int" "unconnected-(IC6-Pad14)" "unconnected-(IC6-Pad15)" "ADC_4_int" "Cell_2" "Cell_3"
+    "Cell_6" "Cell_7" "Cell_10" "Cell_11" "Cell_14" "Cell_15" "Cell_18" "Cell_19"
+    "Cell_22" "Cell_23" "Cell_24" +5V "system_SPI_CS" "UART0_TX" "UART0_RX" "UART1_TX"
+    "UART1_RX" "IN_flag" "OUT_flag" "Net-(JP1-Pad1)" "IN_flag_shifted" "unconnected-(U1-Pad17)" "unconnected-(U1-Pad30)" "Net-(C67-Pad1)"
+    "unconnected-(U1-Pad32)" "unconnected-(U1-Pad34)" "unconnected-(U1-Pad35)" "unconnected-(U1-Pad37)" "unconnected-(U1-Pad40)" "unconnected-(U1-Pad41)" "unconnected-(U1-Pad43)" "unconnected-(A1-Pad9)"
+    "unconnected-(A1-Pad6)" "unconnected-(A1-Pad23)" "Net-(C68-Pad1)" "Net-(C69-Pad1)" "Net-(C70-Pad1)" "Net-(C71-Pad1)" "Net-(C73-Pad1)" "ADC_7_CS"
+    "unconnected-(IC7-Pad14)" "unconnected-(IC7-Pad15)" "ADC_7_int" "SD_SPI_CLK_SHIFT" "SD_SPI_MOSI_SHIFT" "SD_SPI_MISO_SHIFT" "system_SPI_CS_SHIFT" "UART0_TX_SHIFT"
+    "UART0_RX_SHIFT" "Net-(JP2-Pad1)" "Net-(JP3-Pad1)" "Net-(JP4-Pad1)" "Net-(JP5-Pad1)" "Net-(JP6-Pad1)" "UART1_TX_SHIFT" "Net-(JP7-Pad1)"
+    "OUT_flag_SHIFT" "Net-(JP8-Pad1)" "Net-(JP9-Pad1)" "UART1_RX_SHIFT" "Net-(JP10-Pad1)"
+    (clearance_class default)
+    (via_rule default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+  (class "kicad_default"
+    (clearance_class "kicad_default")
+    (via_rule kicad_default)
+    (rule
+      (width 250.0)
+    )
+    (circuit 
+      (use_layer F.Cu B.Cu)
+    )
+  )
+)

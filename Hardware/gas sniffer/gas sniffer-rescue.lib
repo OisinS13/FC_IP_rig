@@ -1,0 +1,67 @@
+EESchema-LIBRARY Version 2.4
+#encoding utf-8
+#
+# LM317MBTG-SamacSys_Parts
+#
+DEF LM317MBTG-SamacSys_Parts IC 0 30 Y Y 1 F N
+F0 "IC" 750 300 50 H V L CNN
+F1 "LM317MBTG-SamacSys_Parts" 750 200 50 H V L CNN
+F2 "TO254P482X997X2018-3P" 750 100 50 H I L CNN
+F3 "http://www.onsemi.com/pub/Collateral/LM317M-D.PDF" 750 0 50 H I L CNN
+F4 "4.82" 750 -200 50 H I L CNN "Height"
+F5 "863-LM317MBTG" 750 -300 50 H I L CNN "Mouser Part Number"
+F6 "https://www.mouser.co.uk/ProductDetail/onsemi/LM317MBTG?qs=2OtswVQKCOHWWQM%252BNYhxOw%3D%3D" 750 -400 50 H I L CNN "Mouser Price/Stock"
+F7 "onsemi" 750 -500 50 H I L CNN "Manufacturer_Name"
+F8 "LM317MBTG" 750 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+P 5 0 1 6 200 100 700 100 700 -300 200 -300 200 100 N
+X ADJ 1 0 0 200 R 50 50 0 0 P
+X VOUT 2 0 -100 200 R 50 50 0 0 O
+X VIN 3 0 -200 200 R 50 50 0 0 I
+ENDDRAW
+ENDDEF
+#
+# PT15NV15-102A1010-S-SamacSys_Parts
+#
+DEF PT15NV15-102A1010-S-SamacSys_Parts VR 0 30 Y Y 1 F N
+F0 "VR" 1250 300 50 H V L CNN
+F1 "PT15NV15-102A1010-S-SamacSys_Parts" 1250 200 50 H V L CNN
+F2 "PT15NV15102A1010S" 1250 100 50 H I L CNN
+F3 "https://www.mouser.de/datasheet/2/18/1/14_PT15v03-1915311.pdf" 1250 0 50 H I L CNN
+F4 "Trimmer Resistors - Through Hole 15mm control/sensor trimmr potentiometer" 1250 -100 50 H I L CNN "Description"
+F5 "7.2" 1250 -200 50 H I L CNN "Height"
+F6 "531-PT15NV15102A101S" 1250 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/Amphenol-Piher/PT15NV15-102A1010-S?qs=DPoM0jnrROW7FjN7ghMpfA%3D%3D" 1250 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "PIHER" 1250 -500 50 H I L CNN "Manufacturer_Name"
+F9 "PT15NV15-102A1010-S" 1250 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+P 5 0 1 6 200 100 1200 100 1200 -200 200 -200 200 100 N
+X INITIAL_ A1 0 0 200 R 50 50 0 0 P
+X WIPER E1 0 -100 200 R 50 50 0 0 P
+X FINAL S1 1400 0 200 L 50 50 0 0 P
+ENDDRAW
+ENDDEF
+#
+# SGAS701-SamacSys_Parts
+#
+DEF SGAS701-SamacSys_Parts U 0 30 Y Y 1 F N
+F0 "U" 1450 800 50 H V L CNN
+F1 "SGAS701-SamacSys_Parts" 1450 700 50 H V L CNN
+F2 "SGAS701" 1450 600 50 H I L CNN
+F3 "https://componentsearchengine.com/Datasheets/1/SGAS701.pdf" 1450 500 50 H I L CNN
+F4 "TRANSISTOR (T0-39)" 1450 400 50 H I L CNN "Description"
+F5 "8.2296" 1450 300 50 H I L CNN "Height"
+F6 "972-SGAS701" 1450 200 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.com/Search/Refine.aspx?Keyword=972-SGAS701" 1450 100 50 H I L CNN "Mouser Price/Stock"
+F8 "IDT" 1450 0 50 H I L CNN "Manufacturer_Name"
+F9 "SGAS701" 1450 -100 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+P 5 0 1 6 200 600 1400 600 1400 -600 200 -600 200 600 N
+X HEATER_+ 1 1600 0 200 L 50 50 0 0 P
+X SENSOR_+ 2 800 -800 200 U 50 50 0 0 P
+X HEATER_- 3 0 0 200 R 50 50 0 0 P
+X SENSOR_- 4 800 800 200 D 50 50 0 0 P
+ENDDRAW
+ENDDEF
+#
+#End Library
