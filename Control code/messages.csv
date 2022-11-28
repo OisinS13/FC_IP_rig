@@ -7,16 +7,16 @@ CVM,Data Logger,SD initialisation error,"char ""f""; uint8_t Fault_code; uint8_t
 CVM,Data Logger,SD create logfile error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x62,
 CVM,Data Logger,Cell undervoltage error,"Char ""U""; uint32_t Undervoltage_flags",U,55,4,,
 CVM,Data Logger,ADC error,"char ""f""; uint8_t Fault_code; uint8_t ADC_ID;",f,66,2,0x71,ADC_ID is a set of bit flags
-CVM,Data Logger + Load Controller,High frequency request timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,,,,Timeout_type =1
-CVM,Data Logger + Load Controller,High frequency measurement timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,,,,Timeout_type =2
+CVM,Data Logger + Load Controller,High frequency request timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,70,,,Timeout_type =1
+CVM,Data Logger + Load Controller,High frequency measurement timeout,"char ""t""; uint8_t Timeout_type; uint8_t VOID;",t,70,,,Timeout_type =2
 ,,,,,,,,
-CVM,Load Controller,Set load status,"char ""L""; bool flag; uint32_t value;",L,67,5,,
-CVM,Load Controller,Set operating mode,"char ""M""; bool flag; uint32_t value;",M,67,5,,
-CVM,Load Controller,Set reference current,"Char ""I""; bool flag; uint32_t value;",I,67,5,,
-CVM,Load Controller,Set reference voltage,"Char ""V""; bool flag; uint32_t value;",V,67,5,,
-CVM,Load Controller,Activate external alarm,"char ""A""; bool flag; uint32_t value;",A,67,5,,
-CVM,Load Controller,synch timers,"char ""T""; bool flag; uint32_t value;",T,67,5,,
-CVM,Load Controller,ping,"char ""P""; bool flag; uint32_t value;",P,67,5,,
+Data Logger + CVM,Load Controller,Set load status,"char ""L""; bool flag; uint32_t value;",L,67,5,,
+Data Logger + CVM,Load Controller,Set operating mode,"char ""M""; bool flag; uint32_t value;",M,67,5,,
+Data Logger + CVM,Load Controller,Set reference current,"Char ""I""; bool flag; uint32_t value;",I,67,5,,
+Data Logger + CVM,Load Controller,Set reference voltage,"Char ""V""; bool flag; uint32_t value;",V,67,5,,
+Data Logger + CVM,Load Controller,Activate external alarm,"char ""A""; bool flag; uint32_t value;",A,67,5,,
+Data Logger + CVM,Load Controller,synch timers,"char ""T""; bool flag; uint32_t value;",T,67,5,,
+Data Logger + CVM,Load Controller,ping,"char ""P""; bool flag; uint32_t value;",P,67,5,,
 ,,,,,,,,
 Load Controller,Data Logger,Send data,"char ""d"";  uint32_t I_ref;  uint32_t V_ref; uint32_t P_ref; 
 uint32_t V_fc; uint32_t V_fc_spike; uint32_t I_monitor;

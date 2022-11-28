@@ -1,18 +1,32 @@
 // read serial
-void msgRead() {
+void msgRead(SerialTransfer &stf) {
   // check messages from interface
-  if (CellVoltageMonitor.available()) {
-    uint16_t n_byt = 0;
-    n_byt = CellVoltageMonitor.rxObj(rx_msg, n_byt);
+  while (stf.available()) {
 
-    // Parse message
-    msgParse(rx_msg.cmd, rx_msg.flag, rx_msg.value);
+    // read packet ID
+    uint8_t ID = stf.currentPacketID();
+    uint16_t n_byt = 0;
+
+
+    // parse packets with ID 0x67
+    if (ID == 0x67) {
+      n_byt = stf.rxObj(rx_msg, n_byt);
+      msgParse(stf, ID, rx_msg.cmd, rx_msg.flag, rx_msg.value);
+    }
+
+
+    // parse packets with other IDs
+    if (ID == 0x68) {
+        // code here
+    }
   }
 }
 
 
 
-void msgWrite(SerialTransfer &stf, char cmd, bool flag, uint32_t value) {
+
+
+void msgWrite(SerialTransfer &stf, byte ID, char cmd, bool flag, uint32_t value) {
   uint16_t n_byt = 0;
 
   // Set struct values
@@ -24,7 +38,7 @@ void msgWrite(SerialTransfer &stf, char cmd, bool flag, uint32_t value) {
   n_byt = stf.txObj(tx_msg, n_byt);
 
   // Send buffer
-  stf.sendData(n_byt);
+  stf.sendData(n_byt, ID);
 }
 
 
@@ -32,41 +46,44 @@ void msgWrite(SerialTransfer &stf, char cmd, bool flag, uint32_t value) {
 // write data to logger
 void dataWrite() {
   uint16_t n_byt = 0;
-  n_byt = DataLogger.txObj(data, n_byt);
-  DataLogger.sendData(n_byt);
+  n_byt = DL.txObj(data, n_byt);
+  byte ID = 0x68;
+  DL.sendData(n_byt, ID);
 }
 
 
 
-void msgParse(char cmd, bool flag, uint32_t value) {
-  // Set Load on/off
-  if (cmd == 'L') {
-    setLoadFlag(flag);
-  }
+void msgParse(SerialTransfer &stf, uint8_t ID, char cmd, bool flag, uint32_t value) {
 
-  // Set operating mode
-  if (cmd == 'M') {
-    setOpMode(value);
-  }
-
-  // Set constant current reference
-  if (cmd == 'I') {
-    setRefCurrent(value);
-  }
-
-
-  // external alarm
-  if (cmd == 'A') {
-    handleExternalAlarm(flag);
-  }
-
-  // synch timers
-  if (cmd == 'T') {
-    setRefTime(value);
-  }
-
-  // send ack
-  if (cmd == 'P') {
-    msgWrite(CellVoltageMonitor, 'P', true, 0);
+  // Handle packets of ID = 0x67
+  if (ID == 0x67) {
+    // Set Load on/off
+    if (cmd == 'L') {
+      setLoadFlag(flag);
+    }
+    // Set operating mode
+    if (cmd == 'M') {
+      setOpMode(value);
+    }
+    // Set constant current reference
+    if (cmd == 'I') {
+      setRefCurrent(value);
+    }
+    // Set constant voltage reference
+    if (cmd == 'V') {
+      setRefCurrent(value);
+    }
+    // external alarm
+    if (cmd == 'A') {
+      handleExternalAlarm(flag);
+    }
+    // synch timers
+    if (cmd == 'T') {
+      setRefTime(value);
+    }
+    // send ping
+    if (cmd == 'P') {
+      msgWrite(stf, 0x67, 'P', true, 0);
+    }
   }
 }

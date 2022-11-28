@@ -1,5 +1,8 @@
 // Assemble data struct
 void aggData() {
+  // command byte
+  data.cmd = 'D';
+  
   // reference values
   data.I_ref = I_ref;
   data.V_ref = V_ref;
@@ -16,9 +19,12 @@ void aggData() {
   // ADC data
   readADC();
 
+  // I2C data (current clamp)
+  //readI2C();
+
 
   // time
-  data.time_stamp = millis() - ref_time;
+  data.time_stamp = millis() - ref_time_ms;
 }
 
 
