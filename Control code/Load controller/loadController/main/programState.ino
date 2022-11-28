@@ -1,5 +1,6 @@
 void setRefTime(uint32_t value) {
-  ref_time = millis() + value;
+  ref_time_ms = millis() + value;
+  ref_time_us = micros() + value * 1000;
 }
 
 
@@ -24,26 +25,6 @@ void handleExternalAlarm(bool flag) {
 }
 
 
-void setShortCircuitFlag(uint32_t value) {
-  if (digitalRead(in_flag_pin)) {
-  // extract short circuit period in [uS]
-  short_period = value;
-
-  // Requested time may not exceed max short time
-  if (short_period > max_short_time) {
-      short_period = max_short_time;
-    }
-
-    // request short circuit
-    time_stamp = micros();
-    short_flag = true;
-  } else {
-    if (USB_flag) {
-      Serial.println("Short circuit requested but in_flag was low.");
-    }
-  }
-}
-
 
 // Function to set reference current in load bank
 void setRefCurrent(uint32_t value) {
@@ -54,10 +35,17 @@ void setRefCurrent(uint32_t value) {
   if (I_ref > max_current) {
     I_ref = max_current;
   }
+}
 
-  if (USB_flag) {
-    Serial.println("Current reference was set to (mA):");
-    Serial.println(I_ref);
+
+// Function to set reference current in load bank
+void setRefVoltage(uint32_t value) {
+
+  V_ref = value;
+
+  // Requested voltage may not be higher than maximum voltage
+  if (V_ref > max_voltage) {
+    V_ref = max_voltage;
   }
 }
 
@@ -67,15 +55,9 @@ void setLoadFlag(bool flag) {
   if (flag) {
     load_flag = true;
     setLoad(HIGH);
-
-    if (USB_flag) {
-      Serial.println("Load is ON");
-    }
-
   } else {
     load_flag = false;
     setLoad(LOW);
-    Serial.println("Load is OFF");
   }
 }
 
@@ -83,24 +65,18 @@ void setLoadFlag(bool flag) {
 void setOpMode(uint32_t value) {
   if (value == 1) {
     op_mode = 1;
-    if (USB_flag) {
-      Serial.println("Reference tracking mode was selected.");
-    }
+    // reference tracking mode
   }
 
   // Power tracking
   if (value == 2) {
     op_mode = 2;
-    if (USB_flag) {
-      Serial.println("MPPT mode was selected.");
-    }
+    // MPPT mode
   }
 
   // Efficiency tracking
   if (value == 3) {
     op_mode = 3;
-    if (USB_flag) {
-      Serial.println("MPET mode was selected.");
-    }
+   // MPET mode
   }
 }

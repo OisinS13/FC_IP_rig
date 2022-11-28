@@ -1,29 +1,8 @@
 // perform short circuit for a set amount of microseconds
-void executeShort(int dt) {
-
-  // open IGBT
-  toggleIGBT(igbt_selected, HIGH);
-  digitalWrite(out_flag_pin, HIGH);
-
-  // delay
-  int start_time = micros();
-
-  // dont use delay here
-  delayMicroseconds(dt);
-
-  // close IGBT
-  toggleIGBT(igbt_selected, LOW);
-  digitalWrite(out_flag_pin, LOW);
-
-  // close flag
-  short_flag = false;
-
-  if (USB_flag) {
-    Serial.println("Short-circuit was performed for (uS):");
-    Serial.println(short_period);
-    Serial.println("with delay (uS)");
-    Serial.println(start_time - time_stamp);
-  }
+void executeShort() {
+    
+    // code here
+    
 }
 
 

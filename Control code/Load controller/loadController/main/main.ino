@@ -3,14 +3,17 @@
 #include "SerialTransfer.h"
 RTC_PCF8523 rtc;
 
-SerialTransfer DataLogger;
-SerialTransfer CellVoltageMonitor;
+
+SerialTransfer DL;
+SerialTransfer CVM;
 
 
 // Program states:
-int ref_time  = 0;
-int data_time = 0;
-int data_interval = 10;
+int ref_time_ms   = 0;
+int ref_time_us   = 0;
+int data_time     = 0;
+int data_interval = 500;
+
 
 // Set maximum values
 // Units: mA, mV, W, uS
@@ -19,6 +22,7 @@ const int max_voltage    = 150000;
 const int max_power      = 3000;
 const int max_short_time = 100000;
 
+
 // Reference variables:
 // refs: Current, voltage, power
 // units: mA, mV,  W
@@ -26,7 +30,9 @@ int V_ref = 24;
 int I_ref = 0;
 int P_ref = 0;
 
+
 // split uf reference tracking to cc, cv cp
+
 
 // Operating mode
 // Available:
@@ -35,14 +41,17 @@ int P_ref = 0;
 // 3 Maximum efficiency tracking  (MET)
 int op_mode = 1;
 
+
 // Short circuit parameters
-int  short_period   = 0;
-int  time_stamp     = 0;
+int  SCD = 0; // short_circuit_duration
+int  SCT = 0; // short_circuit_timer
 int  igbt_selected  = 1;
+
 
 // PWM Settings
 int PWM_range = 24000;
 int PWM_freq  = 10000;
+
 
 // flags
 bool alarm_1     = false;
@@ -51,6 +60,7 @@ bool alarm_ext   = false;
 bool load_flag   = false;
 bool short_flag  = false;
 bool USB_flag    = false;
+
 
 // ADC channels
 uint16_t voltage_spike = 0;
@@ -63,17 +73,14 @@ uint16_t bank_current  = 0;
 struct PKT {
   char cmd;
   bool flag;
-  uint16_t value;
+  uint32_t value;
 } rx_msg, tx_msg;
-
 
 
 
 // Data packet
 struct DATA {
-
   char cmd;
-
   uint32_t I_ref;
   uint32_t V_ref;
   uint32_t P_ref;
@@ -82,9 +89,7 @@ struct DATA {
   uint32_t I_monitor;
   uint32_t I_clamp;
   uint32_t time_stamp;
-
   uint8_t  op_mode;
-
   bool alarm_1;
   bool alarm_2;
   bool alarm_ext;
@@ -135,7 +140,7 @@ void setup() {
   Serial1.setTX(TX_0_pin);
   Serial1.setPollingMode(true);
   Serial1.begin(115200);
-  CellVoltageMonitor.begin(Serial1);
+  CVM.begin(Serial1);
 
   //Set pins for I2C
   //  Wire.setSDA(SDA_0_pin);
@@ -187,7 +192,7 @@ void setup() {
   Serial2.setTX(TX_1_pin);
   Serial2.setPollingMode(true);
   Serial2.begin(115200);
-  DataLogger.begin(Serial2);
+  DL.begin(Serial2);
 
   // running
   digitalWrite(LED_BUILTIN, HIGH);
@@ -207,15 +212,33 @@ void setup1() {
 
 
 void loop() {
+  // check alarms: sets alarm_1 and alarm_2
+  // flags to true if alarms on the kikusui have been triggered
+  statusAlarm1();
+  statusAlarm2();
 
+  // read & execute instructions from CVM and DL
+  msgRead(CVM);
+  msgRead(DL);
 
+  // read & send data with 10 ms sampling
+  if ( (millis() - data_time) > data_interval) {
+    
+    // reset timer
+    data_time = millis();
 
+    // collect data
+    aggData();
+
+    // send data
+    dataWrite();
+  }
 }
 
 
 void loop1() {
-  // check every iteration if a short-circuit has been requested
-  if (short_flag) {
-    executeShort(short_period);
-  }
+
+  
+
+  
 }
