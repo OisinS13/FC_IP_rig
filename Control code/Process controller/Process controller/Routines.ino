@@ -73,5 +73,24 @@ void FaultSend(SerialTransfer &stf, char ID, uint8_t FaultCode, uint8_t FaultDet
       stf.sendData(2,ID);
 }
 
+void Cathode_heater_control(){
+    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control //EDITME assign temperature pointers
+      Outgoing_data.CTHD_HTR = 1;
+    } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
+      Outgoing_data.CTHD_HTR = 0;
+    }
+    for (int i = 0; i < 3; i++) {
+      if (CTHD_HTR_SFTY_TC_readings[i] > TC_high_temp_thresh) {
+        //EDITME move to cathode heater control section, and copy for other safety TC's
+        Outgoing_data.CTHD_HTR = 0;
+        FaultSend(Interface, 'f', (0x1A + i), 0);  //if reading is outside nominal, send out fault code
+        FaultSend(DataLogger, 'f', (0x1A + i), 0);
+
+      } else if (CTHD_HTR_SFTY_TC_readings[i] > TC_high_temp_thresh - TC_high_temp_thresh_warning_buffer) {
+        FaultSend(Interface, 'f', (0x17 + i), 0);  //if reading is outside nominal, send out fault code
+        FaultSend(DataLogger, 'f', (0x17 + i), 0);
+      }
+    }
+}
 
 

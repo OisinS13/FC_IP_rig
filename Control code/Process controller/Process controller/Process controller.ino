@@ -70,7 +70,7 @@ const uint8_t CLNT_FN_PWMS[6] = { 4, 5, 6, 7, 8, 9 };
 
 const uint8_t P_sig_pins[8] = { P_1_SIG_PIN, P_2_SIG_PIN, P_3_SIG_PIN, P_4_SIG_PIN, P_5_SIG_PIN, P_6_SIG_PIN, P_7_SIG_PIN, P_8_SIG_PIN };  //Array of Pressure signal inputs
 uint8_t P_sig_flags = 0;                                                                                                                   //Flags representing if pressure signals are detected. 1 means sensor detected on that pin, 0 means no sensor detected
-uint32_t P_readings[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+uint32_t P_readings[5] = { 0, 0, 0, 0, 0 };
 
 uint8_t HIH6120_address[10] = { 0x27 };  //Array of expected adresses of Humidity/Temperature sensors
 uint16_t HIH6120_flags = 0;              //Flags to indicate if devices were found at relevant addresses
@@ -93,6 +93,7 @@ uint8_t HTR_SFTY_TC_fault[3] = { 0 };  //Create bytes to store TC amp faults
 
 float TC_low_temp_thresh = 0.0;
 float TC_high_temp_thresh = 100.0;
+uint8_t TC_high_temp_thresh_warning_buffer = 5;
 float CTHD_HTR_SFTY_TC_readings[3] = { 0, 0, 0 };
 
 double CTHD_FLW_reading = 0;
@@ -144,6 +145,22 @@ struct Fault_message {
   uint8_t Fault_detail = 0;
 };
 struct Fault_message Incoming_fault;
+
+struct DataFrameProcess {
+  float CTHD_HTR_SFTY_TC[3] = { 0, 0, 0 };              //DegC
+  double CTHD_FLW = 0;                                  //SLPM
+  float HIH_RH[10] = { 0 };                             //Array to store converted RH data (as %)
+  float HIH_T[10] = { 0 };                              //Array to store converted T data (deg C)
+  uint32_t P_readings[5] = { 0, 0, 0, 0, 0 };  //Pa
+  uint16_t AND_FLW_value[2] = { 0 };                    //SmLPM
+  uint16_t CTHD_FLW_output = 0;                       //12 bit PWM value
+  uint16_t AND_FLW_target = 0;                          //SmLPM
+  uint16_t AND_recirc_PWM = 0;                          //12 bit PWM value
+  uint16_t CLNT_FLW_output = 0;                         //Coolant pump 12 bit PWM value
+  bool CTHD_HTR = 0;                                    //is the cathode heater on/off
+  uint8_t Valves = 0;                                   //Bit flags for what valves are set. Order is anode humidifier feed, cathode humidifier feed, anode flow controller purge, anode flow controller valve, anode purge, H2 in, N2 in
+  uint32_t Process_controller_timestamp = 0;            //timestamp in mS that data was sent out
+} Outgoing_data;
 
 uint8_t Mode = 0;  //Mode of operation.
 /*
@@ -316,8 +333,8 @@ void setup() {
         HIH6120_data_flags &= ~1 << i;          //set data flag to 0 if normal data
         HIH_RH_raw[i] = ((a & 0x3f) << 8) | b;  //Compile bytes into relevant data
         HIH_T_raw[i] = (c << 6) | (d >> 2);
-        HIH_RH[i] = (HIH_RH_raw[i] / 163.82);
-        HIH_T[i] = ((HIH_T_raw[i] / 16382.0) * 165.0) - 40.0;
+        Outgoing_data.HIH_RH[i] = (HIH_RH_raw[i] / 163.82);
+        Outgoing_data.HIH_T[i] = ((HIH_T_raw[i] / 16382.0) * 165.0) - 40.0;
       }
 
     } else {
@@ -326,13 +343,15 @@ void setup() {
         Serial.print(i);
         Serial.print(" at address 0x");
         Serial.println(HIH6120_address[i], HEX);
-      }  //EDITME add fault codes for T+H sensors
+      }
+      FaultSend(Interface, 'f', 0x31, i);  //if reading is outside nominal, send out fault code
+      FaultSend(DataLogger, 'f', 0x31, i);
     }
   }
 
 
 
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 5; i++) {
     if (analogRead(P_sig_pins[i]) > Cathode_flow_sensor_minimum_threshold) {  //Flow sensor should output a minimum of 10% V_in, which should be read as 0.5V. Threshold of 81=0.396
       P_sig_flags |= 1 << i;
     }
@@ -341,6 +360,8 @@ void setup() {
     Serial.print("Pressure sensors connected = ");
     Serial.println(P_sig_flags, BIN);
   }
+
+  //EDITME add coolant temperature readings using last 3 P_sig pins
 
   pwm.begin();           //Connect to the I2C PWM driver
   pwm.setPWMFreq(1600);  // This is the maximum PWM frequency
@@ -354,8 +375,8 @@ void setup() {
   digitalWrite(AND_FLW_VLV_OFF, LOW);                             //Off line high = normal operation, low = closed valve
   AND_FLW_reading[1] = analogRead(AND_FLW_SIG_PIN);               //Voltage output from flow controller
   AND_FLW_reading[2] = analogRead(AND_FLW_SIG2_PIN);              //Current output from flow controller
-  AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
-  AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
+  Outgoing_data.AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
+  Outgoing_data.AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
   //EDITME Write some code to test if the flow controller is working
 
   pinMode(AND_TRC_HTR, OUTPUT);
@@ -365,18 +386,18 @@ void setup() {
 
 void loop() {
 
+  //EDITME add time averaging function for outgoing data?
+
   for (int i = 0; i < 3; i++) {
     if (digitalRead(CTHD_HTR_SFTY_DRDY[i])) {                                       //Check if a reading from the Cathode heater safety thermocouple is ready
-      CTHD_HTR_SFTY_TC_readings[i] = HTR_SFTY_TC[i].readThermocoupleTemperature();  //Read Cathode heater safety thermocouple
+      Outgoing_data.CTHD_HTR_SFTY_TC[i] = HTR_SFTY_TC[i].readThermocoupleTemperature();  //Read Cathode heater safety thermocouple
     }
   }  //EDITME add else statement
 
 
-  if (CTHD_HTR_SFTY_TC_readings[1] > TC_high_temp_thresh) {
-    //EDITME move to cathode heater control section, and copy for other safety TC's
-  }
 
-  CTHD_FLW_reading = map(analogRead(CTHD_FLW_SIG_PIN), 204, 1023, 0, 500);
+
+  Outgoing_data.CTHD_FLW= map(analogRead(CTHD_FLW_SIG_PIN), 204, 1023, 0, 500);
 
 
   if (millis() - HIH_last_read_time > HIH_interval) {  //HIH takes up to 50 mS to convert, so for speed/non blocking, cycle triggers next conversion immediately after reading
@@ -401,8 +422,8 @@ void loop() {
             HIH6120_data_flags &= ~1 << i;          //set data flag to 0 if normal data
             HIH_RH_raw[i] = ((a & 0x3f) << 8) | b;  //Compile bytes into relevant data
             HIH_T_raw[i] = (c << 6) | (d >> 2);
-            HIH_RH[i] = (HIH_RH_raw[i] / 163.82);  //Convert data to SI units as floats
-            HIH_T[i] = ((HIH_T_raw[i] / 16382.0) * 165.0) - 40.0;
+            Outgoing_data.HIH_RH[i] = (HIH_RH_raw[i] / 163.82);  //Convert data to SI units as floats
+            Outgoing_data.HIH_T[i] = ((HIH_T_raw[i] / 16382.0) * 165.0) - 40.0;
           }
 
         } else {
@@ -428,18 +449,17 @@ void loop() {
     HIH_last_read_time = millis();
   }
 
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 5; i++) {
     if (P_sig_flags & (1 << i)) {
-      P_readings[i] = ((analogRead(P_sig_pins[i]) * 1000000) - 102400000) / 1024;  //Convert analog reading to pressure in Pa
+      Outgoing_data.P_readings[i] = ((analogRead(P_sig_pins[i]) * 1000000) - 102400000) / 1024;  //Convert analog reading to pressure in Pa
     }
   }
 
   AND_FLW_reading[1] = analogRead(AND_FLW_SIG_PIN);               //Voltage output from flow controller
   AND_FLW_reading[2] = analogRead(AND_FLW_SIG2_PIN);              //Current output from flow controller
-  AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
-  AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
+  Outgoing_data.AND_FLW_value[1] = map(AND_FLW_reading[1], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
+  Outgoing_data.AND_FLW_value[2] = map(AND_FLW_reading[2], 0, 1023, 0, 50000);  //Convert analogue reading to mL per minute
 
-  //EDITME add code to deal with "command not recognised" response
   if (DataLogger.available()) {  //EDITME change to while
     char ID = DataLogger.currentPacketID();
 
@@ -468,7 +488,6 @@ void loop() {
     if (ID == 'f') {                    //fault code
       Interface.rxObj(Incoming_fault);  //EDITME write code to deal with faults
     } else {
-      //EDITME Write error throwing code for "Command not recognised"
       FaultSend(Interface, 'f', 0x01, ID);
     }
   }
@@ -484,17 +503,14 @@ void loop() {
 
   } else if (Mode == 3) {  //Normal power delivery
 
-    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control //EDITME assign temperature pointers
-      digitalWrite(CTHD_HTR, HIGH);
-    } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
-      digitalWrite(CTHD_HTR, LOW);
-    }
+    Cathode_heater_control();
+      digitalWrite(CTHD_HTR, Outgoing_data.CTHD_HTR);
 
     CTHD_FLW_target = (Current.set * num_cells * 60 * CTHD_FLW_stoich) / (O2_conc * Moles_per_litre_x_F_const_x_electrons_per_mole * 2);  //Calculate cathode flowrate in SLPM //EDITME check units, and deal with potential floating point problems
     if (CTHD_FLW_target < CTHD_FLW_min) { CTHD_FLW_target = CTHD_FLW_min; }                                                               //Ensure flow rate stays above minimum threshold at low current
     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
-    CTHD_FLW_output = CTHD_FLW_output_PID;
-    pwm.setPWM(CTHD_VLV_PWM, 0, CTHD_FLW_output);  //write output value to PWM controller
+    Outgoing_data.CTHD_FLW_output = CTHD_FLW_output_PID;
+    pwm.setPWM(CTHD_VLV_PWM, 0, Outgoing_data.CTHD_FLW_output);  //write output value to PWM controller
 
     AND_FLW_target = (Current.set * num_cells * 60 * 1000) / (Moles_per_litre_x_F_const_x_electrons_per_mole);  //Calculate cathode flowrate in SmLPM //EDITME check units, and deal with potential floating point problems
     if (AND_FLW_target < AND_FLW_min) { AND_FLW_target = AND_FLW_min; }                                         //Ensure flow rate stays above minimum threshold at low current
@@ -528,11 +544,8 @@ void loop() {
 
   } else if (Mode == 4) {  //Low power (stack idle)
 
-    if (*Cathode_inlet_T < (Cathode_target_T - Cathode_T_Hysteresis)) {  //Set Cathode heater on/off based on hysteretic control //EDITME assign temperature pointers
-      digitalWrite(CTHD_HTR, HIGH);
-    } else if (*Cathode_inlet_T > (Cathode_target_T + Cathode_T_Hysteresis)) {
-      digitalWrite(CTHD_HTR, LOW);
-    }
+    Cathode_heater_control();
+      digitalWrite(CTHD_HTR, Outgoing_data.CTHD_HTR);
 
     // CTHD_FLW_target = CTHD_FLW_min;                                                               //Set flow rate to minimum threshold at low current
     //     CTHD_FLW_PID.run();                                                                                                                   //run PID calcs to find output value
@@ -569,5 +582,5 @@ void loop() {
     FaultSend(DataLogger, 'f', 0x03, 0);
   }
 
-//EDITME write code to send data to logger
+  //EDITME write code to send data to logger
 }

@@ -31,6 +31,7 @@ unsigned int V_write_counter = 0;                                 //Counter to i
 bool file_ready_flag = 0;
 uint32_t UV_flags = 0;           //Cell undervoltage flags
 uint32_t UV_threshold = 400000;  //Cell undervoltage threshold in uV
+bool UV_error_to_clear=0;
 
 uint16_t V_in_UART[Num_channels] = { 0 };                                                                                                                                                           //Initialise array to for low frequency acquisition including 4 bytes of timestamp
 uint32_t V_out_UART[Num_channels];                                                                                                                                                                  //Initialise uint32_t array to send uV data over UART, and save to SD
@@ -133,7 +134,6 @@ void setup1() {
   SPI1.endTransaction();
 
   while (!ID_check(0x81, CS_pins)) {}  //Check that the ADC's all read the correct address to determine if SPI lines are functional. ID of chip should be 0x81 at register 0
-  //EDITME write error throwing code
 
 
   for (int i = 0; i < Num_buffs; i++) {
@@ -161,7 +161,6 @@ void setup1() {
     if (USB_flag) {
       Serial.println("initialization failed!");
     }
-    //EDITME write error throwing code
   } else {
     SD_boot_flag = 1;
     if (USB_flag) {
@@ -182,7 +181,7 @@ void setup1() {
   }
 
   //EDITME Write code to throw error and ask for manual reboot of Core1 if SD or RTC boot fails
-  //FaultSend(DataLogger, 'R', 0, 0);  //Send reboot request
+  //FaultSend(DataLogger, 'R', 0x05, 0x02);  //Send reboot request
 
   DateTime boot_time = rtc.now();
 
@@ -199,8 +198,7 @@ void setup1() {
     Filenamefast[i] = 0;  //Clear out the Filenamefast char array
   }
 
-  if (!Create_logfile(boot_time, &Filenameslow[0], 0)) {
-    ;  //EDITME Add error throwing code?
+  while (!Create_logfile(boot_time, &Filenameslow[0], 0)) {
   }
   logfile.write("Cell 1(uV), Cell 2(uV), Cell 3(uV), Cell 4(uV), Cell 5(uV), Cell 6(uV), Cell 7(uV), Cell 8(uV), Cell 9(uV), Cell 10(uV), Cell 11(uV), Cell 12(uV), Cell 13(uV), Cell 14(uV), Cell 15(uV), Cell 16(uV), Cell 17(uV), Cell 18(uV), Cell 19(uV), Cell 20(uV), Cell 21(uV), Cell 22(uV), Cell 23(uV), Cell 24(uV), Stack 6(uV), Stack 12(uV), Stack 18(uV), Stack 24(uV), Time(uS)");
   logfile.close();  //close long term log file
@@ -227,35 +225,6 @@ void loop() {
 
       //EDITME write High frequency voltage monitoring recieve code
     }
-
-    //EDITME add all messages
-
-    // while (Serial1.available()) {          //Detect incoming UART messages from Data logger
-    //   char inChar = (char)Serial1.read();  //Put incoming data into a char byte
-    //   if (inChar == '!') {                 //Check if the command string is complete by looking for end character
-    //     stringComplete1 = true;            //raise flag to show command is complete
-    //   } else Command1 += inChar;           //put incoming byte on end of command string
-    //   if (stringComplete1) {               //check if incoming command is complete
-    //     //EDITME Code triggered by UART0 (Data logger) commands goes in here
-    //     Command1 = "";  //clear command string
-    //   }
-    //   stringComplete1 = false;
-    // }
-    // while (Serial2.available()) {          //Detect incoming UART messages from Data logger
-    //   char inChar = (char)Serial2.read();  //Put incoming data into a char byte
-    //   if (inChar == '!') {                 //Check if the command string is complete by looking for end character
-    //     stringComplete2 = true;            //raise flag to show command is complete
-    //   } else Command2 += inChar;           //put incoming byte on end of command string
-    //   if (stringComplete2) {               //check if incoming command is complete
-    //     //EDITME Code triggered by UART1 (Power controller) commands goes in here
-    //     if (Command2 == "Begin HF CVM") {  //Command to start high frequency read mode
-    //       Burst_read_flags |= 0x80;        //Set the flag requesting high frequency data acquisition
-    //     }
-    //     Command2 = "";  //clear command string
-    //   }
-    //   stringComplete2 = false;
-    // }
-    //EDITME write code to deal with extra characters that might be generated on boot?
   }
 }
 
@@ -324,7 +293,7 @@ void loop1() {
         V_in_UART[(l * 4) + 3] = SPI1.transfer16(0x00);
         digitalWrite(CS_pins[l], HIGH);
       }
-      //EDITME write code to throw cell undervoltage errors?
+
       for (int i = 0; i < Num_channels; i++) {
         //Total equation here is (V_in_UART[i] * 1.8) / (4096.0) * ((PD_R1_values[i] + 3000.0) / 3000.0)*1000000;
         data_struct.V[i] = (V_in_UART[i] * 18 * (PD_R1_values[i] + 3000) * 1000) / (4096 * 3 * 10);  //Calculate voltages (in uV) as uint32_t using R values from board pot divs
@@ -339,11 +308,13 @@ void loop1() {
         DataLogger.txObj(UV_flags);
         DataLogger.sendData(4, 'U');  //Send UV_flags with UV command code
         UV_flags = 0;                 //Reset UV_flags
+      }else if (UV_error_to_clear){
+        FaultSend(DataLogger, 'u', 0xF1, 0xFF); //Send UV error clear message
       }
 
       uint16_t n_byt = 0;
       n_byt = DataLogger.txObj(data_struct, n_byt);
-      DataLogger.sendData(n_byt, 'd');  //send data with command code //EDITME check buffer size
+      DataLogger.sendData(n_byt, 'd');  //send data with command code
 
 
       // Serial1.write("Data:");  //Inform Data logger that this is a data command
@@ -356,9 +327,9 @@ void loop1() {
       // Serial1.write("!");
 
       char Data_to_file[] = "\n";  //Initialise char array, beginning with a new line character
-      if (!logfile.open(Filenameslow, O_RDWR | O_APPEND)) {
-        ;
-      }           //EDITME Write error throwing code
+      while (!logfile.open(Filenameslow, O_RDWR | O_APPEND)) {
+            FaultSend(DataLogger, 'f', 0x62, 0); //Send fault for SD create/open logfile fault
+      }
       int j = 1;  //starts at 1 to account for newline chracter
       for (int i = 0; i < Num_channels; i++) {
         j += sprintf(&Data_to_file[j], "%lu,", V_out_UART[i]);  //Append a reading, and then a delimeter
