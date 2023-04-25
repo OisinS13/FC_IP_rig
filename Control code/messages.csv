@@ -36,9 +36,10 @@ Process controller,Data Logger+Interface,Cathode heater safety TC won't connect,
 Process controller,Data Logger+Interface,Cathode heater safety near overtemp,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,,2,"0x17,0x18,0x19",
 Process controller,Data Logger+Interface,Cathode heater safety overtemp,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,,2,"0x1A,0x1B,0x1C",
 Process controller,Data Logger+Interface,Cathode flow sensor read fault,"char ""f""; uint8_t Fault_code; uint8_t CTHD_FLW_FLT",f,66,2,0x21,CTHD_FLW_FLT identifies problem. 0x01=below minimum output
-Process controller,Data Logger+Interface,HIH6120 fault,"char ""f""; uint8_t Fault_code; uint8_t HIH6120ID+fault",f,66,2,0x31,"HIH6120ID+fault identifies which HIH6120 is faulty, last 2 bits identify error"
-Process controller,Data Logger+Interface,Pressure sensor fault,"char ""f""; uint8_t Fault_code; uint8_t PressureID+fault",f,66,2,0x41,"PressureID+fault identifies which pressure sensor is faulty, last 2 bits identify error"
-Process controller,Data Logger+Interface,Temperature out of bounds,"char ""T""; uint8_t Temperature_ID; uint8_t over/under",T,54,2,0xF2,"Temperature_ID identifies which reading is out of bounds, over/under details if it is over or under, and if its warning or immediate action"
+Process controller,Data Logger+Interface,HIH6120 fault,"char ""f""; uint8_t Fault_code; uint8_t fault+HIH6120ID",f,66,2,0x31,"Fault+HIH6120ID identifies which HIH6120 is faulty, first 2 bits identify error. HIH6120 address must be <0x39. Fault codes 0=could not read, 1=in command mode"
+Process controller,Data Logger+Interface,HIH6120 stale data,"char ""f""; uint8_t Fault_code; uint8_t Stale_data_flags",,66,2,0x32,
+Process controller,Data Logger+Interface,Pressure sensor fault,"char ""f""; uint8_t Fault_code; uint8_t P_sig_flags",f,66,2,0x41,P_sig_flags are raised if signal is below minimum threshold
+Process controller,Data Logger+Interface,Temperature out of bounds,"char ""T""; uint8_t Temperature_ID; uint8_t over/under",T,54,2,0xF2,"Temperature_ID identifies which reading is out of bounds (0-7=HIH6120's,8-10=safety TC's, 11-13=coolant), over/under details if it is over or under, and if its warning or immediate action (LSB: 1=over, 0=under, bit 2: 1=immediate action, 0=warning)"
 Process controller,Data Logger+Interface,Flow out of bounds,"char ""F""; uint8_t Flow_ID; uint8_t over/under",F,46,2,0xF3,
 Process controller,Data Logger+Interface,Pressure out of bounds,"Char ""P""; uint8_t Pressure_ID; uint8_t over/under",P,70,2,0xF4,
 Process controller,Any (in response to a message),Command not recognised,"char ""f""; uint8_t Fault_code; uint8_t ID_recieved;",f,66,2,0x01,

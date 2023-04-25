@@ -1,0 +1,2 @@
+- Check process PWM controller frequency maximum
+- allocate analog (P_sig) readings correctly
