@@ -1,0 +1,52 @@
+Process controller code notes
+
+Inputs;
+- Heater safety TC (1-3)
+- Cathode flow signal
+- Temp+humid (1-n)
+- Pressure (1-n)
+- Anode flow controller sense (1+2)
+- Uart Data logger
+- Uart power controller
+- Uart safety
+
+
+Outputs
+- fans 1-6 (i2c pwm)
+- Cathode valve (i2c pwm)
+- Anode recirc pump (i2c PWM)
+- Anode flow controller (i2c pwm)
+- Coolant pump pwm (i2c PWM)
+- Anode flow controller purge
+- Anode flow controller valve off
+- Trace heaters (anode + cathode, mains)
+- Cathode blower (unused)
+- Cathode heater (mains)
+- Humidifier feed pump
+- Humidifier feed valve (anode + cathode)
+- Purge valve
+- H2 in vlave
+- N2 in valve
+- Uart Data logger
+- Uart power controller
+- Uart safety
+
+Processes
+- Steady state power
+- steady state micro-power
+- Startup
+- Shutdown
+- Soft e-stop
+- Hard e-stop
+
+FMEA reactions
+- Soft shutdwon
+- Hard shutdown
+- Flooding/dry out reaction
+- Over temperature (soft and hard)
+- Under temperature (soft and hard)
+- under/over pressure (soft and hard)
+- coolant underflow
+- undervoltage
+- Over current
+-IPU stuck on

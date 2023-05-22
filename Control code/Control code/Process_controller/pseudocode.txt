@@ -1,0 +1,146 @@
+Process controller pseudocode
+
+On start{
+Initialise heater safety TC's, and check they are reading
+Check cathode flow signal is present, and within expected limits
+Connect to i2c pwm outs
+Initialise RH+T sensors and determine which are connected
+Assign RH+T sensors to rig locations? Use pointers?
+Read RH+T sensors, check within expected values
+Check which pressure sensors are connected
+Assign pressure sensors to rig locations? use pointers?
+Initialise anode flow controller
+Connect with data logger
+Conenct with load controller
+connect with safety controller
+Connect to i2c pwm outs
+
+Offer performance of check routine via interface
+
+}
+
+Check routine {
+Re-initialise heater safety TC's, and check they are reading
+Check cathode flow signal is present, and within expected limits
+Re-initialise RH+T sensors and determine which are connected
+Read RH+T sensors, check within expected values
+Check which pressure sensors are connected
+Re-initialise anode flow controller
+call & response with data logger
+call & response with load controller
+call & response with safety controller
+
+Cathode flow checks;
+	Check cathode heater by power cycling, looking for change in TC's
+	Power cycle cathode backpressure valve
+	Power cycle humidifier feed pump
+	Check humidifier feed valves
+	
+Anode flow checks
+	Close flow controller valve
+		Look for change in P 
+	Check N2 in valve
+		Auditory check
+	Check H2 in valve
+		Auditory check
+	Return N2/H2 valves to position before checks
+	open flow controller valve
+	Check purge valve
+		Auditory and P drop check
+	Check flow controller purge
+		Choke flow, dropping pressure in anode
+		Open flow controller purge, look for pressure increase
+		Open main purge valve
+		Auditory check with main purge valve open
+		Close flow controller purge valve
+		Close main purge valve
+		Increase flowrate to nominal
+	Check recirc pump
+		Power off, let P settle
+		Power on, look for change in P diff
+	
+Coolant checks
+	Pump
+		Power cycle, auditory check
+	Fans
+		Power cycle, visual check
+
+General checks
+	Power cycle trace heaters
+}
+
+Main loop{
+
+Read in sensors
+	Heater safety TC
+	Cathode flow signal
+	RH+T
+	Pressure
+	Anode flow
+	
+Read in from serial
+	Cell voltages
+	Current setpoint
+	Safety codes
+
+Check safety flags
+Do safety tasks
+
+Enter mode operation (if or switch statement)
+	No mode
+		Alert interface process controller is in no mode once every INTERVAL
+	Startup procedure
+		
+		
+	Shutdown procedure
+	Normal power delivery
+		Turn cathode heater on/off
+		Adjust backpressure valve
+		Adjust flow controller target
+		Adjust recirculation pump
+		Purge
+		Adjust Coolant pump
+		Adjust coolant fans
+		Offer injection of humidification feedwater
+		
+	Low power delivery (idle stack)
+		Turn cathode heater on/off
+		Adjust backpressure valve
+		Adjust flow controller target
+		Adjust recirculation pump
+		Purge
+		Adjust Coolant pump
+		Adjust coolant fans
+		Offer injection of humidification feedwater
+		
+	Soft E-stop
+		Turn cathode heater off
+		Adjust backpressure valve (closed, unless P goes above nominal)
+		Reduce flow controller target
+		Run recirc at full power
+		Close H2 in
+		Open N2 in
+		Purge cycle
+		Adjust coolant pump
+		Adjust coolant fans
+	Hard e-stop
+		Cathode heater off
+		Backpressure valve off
+		Flow controller valve off
+		Close H2 in
+		Recirc off
+		Purge open
+		Coolant pump off
+		Fans off
+		
+	
+Functions
+	Humidification feed water injection anode
+	Humidification feed water injection cathode
+	Purge cycle
+	Pulse purge cycle (flooding prevention)
+	 
+
+}
+
+
