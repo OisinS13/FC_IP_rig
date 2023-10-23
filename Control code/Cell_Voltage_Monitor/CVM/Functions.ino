@@ -15,7 +15,7 @@ int Read_register(uint8_t Address, uint8_t Chip_select) {
   return result;
 }
 
-void ErrorSend(SerialTransfer &stf, ERROR Error_struct_to_send) {
+void ErrorSend(SerialTransfer &stf, Fault_message Error_struct_to_send) {
   uint16_t n_byt = 0;
 
   // Stuff buffer with struct
@@ -27,7 +27,7 @@ void ErrorSend(SerialTransfer &stf, ERROR Error_struct_to_send) {
 
 bool ID_check(uint16_t ID, const uint8_t Chip_select[Num_channels / 4]) {
   bool ID_flag = 1;
-  uint8_t ADC_error_ID=0;
+  uint8_t ADC_error_ID = 0;
   for (int i = 0; i < sizeof(CS_pins); i++) {
     if (ID != Read_register(0, Chip_select[i])) {  //ID address of chip is stored at register 0
       Serial.print("ADC chip ");
@@ -37,8 +37,8 @@ bool ID_check(uint16_t ID, const uint8_t Chip_select[Num_channels / 4]) {
       ADC_error_ID |= 1 << i;
     }
   }
-  if (ADC_error_ID) {  //If a bit in the ADC ID byte has been set, there's an error, so send it out
-  FaultSend(DataLogger, 'f', 0x71, ADC_error_ID); //Send fault for ADC ID check fault
+  if (ADC_error_ID) {                                //If a bit in the ADC ID byte has been set, there's an error, so send it out
+    FaultSend(DataLogger, 'f', 0x71, ADC_error_ID);  //Send fault for ADC ID check fault
   }
   return ID_flag;
 }
@@ -77,14 +77,14 @@ bool Create_logfile(DateTime Log_time, char *Filename_array, bool fast) {
   }
   filename_string.toCharArray(Filename_array, 26);
   if (USB_flag) {
-  Serial.print("Filename generated: ");
-  Serial.println(Filename_array);
+    Serial.print("Filename generated: ");
+    Serial.println(Filename_array);
   }
 
   if (!logfile.open(Filename_array, O_RDWR | O_CREAT | O_TRUNC)) {
-    FaultSend(DataLogger, 'f', 0x62, 0); //Send fault for SD create logfile fault
+    FaultSend(DataLogger, 'f', 0x62, 0);  //Send fault for SD create logfile fault
     if (USB_flag) {
-    Serial.println("File open failed");
+      Serial.println("File open failed");
     }
     return 0;
   } else {
@@ -129,7 +129,7 @@ void Fill_data_buf() {
       V_in_flag[i] = true;
     } else {
       // EDITME Put in error throwing code here
-FaultSend(DataLogger, 'f', 0x04, 0); //Send fault code for buffer overflow fault
+      FaultSend(DataLogger, 'f', 0x04, 0);  //Send fault code for buffer overflow fault
 
       // Serial.println("Data buffer overflow!");
       // delay(10);
@@ -137,10 +137,10 @@ FaultSend(DataLogger, 'f', 0x04, 0); //Send fault code for buffer overflow fault
   }
 }
 
-void FaultSend(SerialTransfer &stf, char ID, uint8_t FaultCode, uint8_t FaultDetail){
-      struct Fault_message Fault;
-      Fault.Fault_code = FaultCode;
-      Fault.Fault_detail = FaultDetail;
-      stf.txObj(Fault);
-      stf.sendData(2,ID);
+void FaultSend(SerialTransfer &stf, char ID, uint8_t FaultCode, uint8_t FaultDetail) {
+  struct Fault_message Fault;
+  Fault.Fault_code = FaultCode;
+  Fault.Fault_detail = FaultDetail;
+  stf.txObj(Fault);
+  stf.sendData(2, ID);
 }

@@ -31,14 +31,14 @@ unsigned int V_write_counter = 0;                                 //Counter to i
 bool file_ready_flag = 0;
 uint32_t UV_flags = 0;           //Cell undervoltage flags
 uint32_t UV_threshold = 400000;  //Cell undervoltage threshold in uV
-bool UV_error_to_clear=0;
+bool UV_error_to_clear = 0;
 
-uint16_t V_in_UART[Num_channels] = { 0 };                                                                                                                                                           //Initialise array to for low frequency acquisition including 4 bytes of timestamp
-uint32_t V_out_UART[Num_channels];                                                                                                                                                                  //Initialise uint32_t array to send uV data over UART, and save to SD
-uint32_t StartTimefast;                                                                                                                                                                             //Timer start for high frequency acquisition
-uint32_t StartTimeslow;                                                                                                                                                                             //Timer start for low frequency acquisition
-uint16_t PD_R1_values[Num_channels] = { 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060};  //R1 values for the potential dividers dropping the stacked voltages to below the ADC Vref values
-                                                                                                                                                                                                    //R2 values are all 3k
+uint16_t V_in_UART[Num_channels] = { 0 };                                                                                                                                //Initialise array to for low frequency acquisition including 4 bytes of timestamp
+uint32_t V_out_UART[Num_channels];                                                                                                                                       //Initialise uint32_t array to send uV data over UART, and save to SD
+uint32_t StartTimefast;                                                                                                                                                  //Timer start for high frequency acquisition
+uint32_t StartTimeslow;                                                                                                                                                  //Timer start for low frequency acquisition
+uint16_t PD_R1_values[Num_channels] = { 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060, 0, 1000, 3000, 8060 };  //R1 values for the potential dividers dropping the stacked voltages to below the ADC Vref values
+                                                                                                                                                                         //R2 values are all 3k
 
 bool Core0_boot_flag = 0;  //Flag to tell Core1 that Core0 has successfully booted
 bool Core1_boot_flag = 0;  //Flag to tell Core0 that Core1 has successfully booted
@@ -65,8 +65,8 @@ unsigned long Flag_time_Hardware_in = 0;
 // String Command2 = "";
 
 struct DATA {  //Structure to send out CVM data
-  char CMD = d;
-  uint32_t V[28] = 0;
+  char CMD = 'd';
+  uint32_t V[28];
   uint32_t Timestamp = 0;
 } data_struct;
 
@@ -76,6 +76,8 @@ struct Fault_message {
 };
 struct Fault_message Incoming_fault;
 
+bool ID_check(uint16_t ID, const uint8_t Chip_select[Num_channels / 4]);
+
 void setup() {
   Serial.begin(115200);
   // while (!Serial) {
@@ -84,10 +86,10 @@ void setup() {
 
   Serial1.setRX(2);  //Set UART pins for UART0, to be used for Data logger connection
   Serial1.setTX(1);
-  Serial1.setFIFOSize(128);  //May be required for stable UART comms
-  Serial1.setPollingMode(true);     //Ensure UART0 port is listening for messages
-  Serial1.begin(115200);            //Initialise UART0 port
-  DataLogger.begin(Serial1);        //Initialise Serial Transfer object for Data logger connection
+  Serial1.setFIFOSize(128);      //May be required for stable UART comms
+  Serial1.setPollingMode(true);  //Ensure UART0 port is listening for messages
+  Serial1.begin(115200);         //Initialise UART0 port
+  DataLogger.begin(Serial1);     //Initialise Serial Transfer object for Data logger connection
 
   Serial2.setRX(12);  //Set UART pins for UART1, to be used for Load controller connection
   Serial2.setTX(11);
@@ -207,13 +209,13 @@ void setup1() {
 }
 
 void loop() {
- 
+
   if (V_in_flag[V_write_counter]) {  //Check if there is a full data buffer to be written
     Write_buf_to_SD();               //Write full data buffer to SD. For speed reasons, this is a priority
   } else {                           //Other code goes in here so that write is never delayed
 
     if (DataLogger.available()) {
-      char ID = DataLogger.currentPacketID;
+      char ID = DataLogger.currentPacketID();
 
       if (ID == 'r') {  //Command to reboot core 1
         //EDITME write reboot code
@@ -221,7 +223,7 @@ void loop() {
     }
 
     if (LoadController.available()) {
-      char ID = LoadController.currentPacketID;
+      char ID = LoadController.currentPacketID();
 
       //EDITME write High frequency voltage monitoring recieve code
     }
@@ -308,8 +310,8 @@ void loop1() {
         DataLogger.txObj(UV_flags);
         DataLogger.sendData(4, 'U');  //Send UV_flags with UV command code
         UV_flags = 0;                 //Reset UV_flags
-      }else if (UV_error_to_clear){
-        FaultSend(DataLogger, 'u', 0xF1, 0xFF); //Send UV error clear message
+      } else if (UV_error_to_clear) {
+        FaultSend(DataLogger, 'u', 0xF1, 0xFF);  //Send UV error clear message
       }
 
       uint16_t n_byt = 0;
@@ -328,7 +330,7 @@ void loop1() {
 
       char Data_to_file[] = "\n";  //Initialise char array, beginning with a new line character
       while (!logfile.open(Filenameslow, O_RDWR | O_APPEND)) {
-            FaultSend(DataLogger, 'f', 0x62, 0); //Send fault for SD create/open logfile fault
+        FaultSend(DataLogger, 'f', 0x62, 0);  //Send fault for SD create/open logfile fault
       }
       int j = 1;  //starts at 1 to account for newline chracter
       for (int i = 0; i < Num_channels; i++) {
