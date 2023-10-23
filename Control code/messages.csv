@@ -48,6 +48,9 @@ Process controller,Data Logger+Interface,Unkown Mode selected,"char ""f""; uint8
 Process controller,Data logger,Process data,"char ""d"";  ",d,,,,
 Data logger,Process controller,Current setpoint,"Char ""I""; uint16_t I_setpoint; uint16_t I_sense",I,49,4,,
 Data logger,Process controller,Safety codes,"char ""f""; uint8_t Fault_code; uint8_t Fault_detail;",f,66,2,,
+Safety,Process controller,H2 minor leak,"char ""h""; uint8_t SetClear+Sensor_ID; uint8_t Sensor_ID;",,,,,"0=set, 1=clear on MSB. Sensor ID is 4 LSB of first uint8_t"
+Safety,Process controller,H2 major leak,"char ""H""; uint8_t Sensor_ID; uint8_t SetClear;",,,,, 
+Safety,Process controller,Interlock signal,"char ""S""; uint8_t SetClear uint8_t VOID;",,,,,"0=Interlock signal triggered, 1=Interlock signal reset"
 Safety,Process controller,Safety codes,,,,,,
 Safety,Data logger,Safety codes,,,,,,
 Data logger,Interface,SD initialisation error,"char ""f""; uint8_t Fault_code; uint8_t VOID;",f,66,2,0x71,

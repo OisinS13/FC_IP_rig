@@ -1,3 +1,18 @@
+bool USB_setup(uint32_t Baud_rate, uint16_t Wait_time_mS) {
+  Serial.begin(Baud_rate);
+  delay(Wait_time_mS);  //Give USB time to connect EDITME to shortest reliable time
+  if (Serial) {
+    // USB_flag = 1;  //Used so that when connected via USB, verbose status and error messages can be sent, but will still run if not connected
+    Serial.println("PEMFC IPU rig Data Logger Connected");
+    Serial.println("V.1.0 Oisin Shaw");
+
+    return 1;
+  } else {
+    Serial.end();
+    return 0;
+  }
+}
+
 bool Create_logfile(DateTime Log_time, char *Filename_array) {
   String filename_string = String(Log_time.year(), DEC) + '_';
   if (Log_time.month() < 10) {

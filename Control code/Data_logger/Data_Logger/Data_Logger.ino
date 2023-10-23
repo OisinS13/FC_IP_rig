@@ -16,7 +16,7 @@ SerialTransfer LoadController;
 SerialTransfer SafetySystem;
 SerialTransfer ProcessController;
 
-const uint8_t SD_CS_PIN = 5;  //EDITME check CS pin
+const uint8_t SD_CS_PIN = 5; 
 #define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI, SPI_CLOCK)
 #define SPI_CLOCK SD_SCK_MHZ(50)
 SdFat32 SD;
@@ -54,6 +54,7 @@ struct DataFrameProcess {
   uint16_t CTHD_FLW_output = 0;                //12 bit PWM value
   uint16_t AND_FLW_value[2] = { 0 };           //SmLPM
   uint16_t AND_FLW_target = 0;                 //SmLPM
+  uint16_t AND_FLW_output = 0;                 //12 bit PWM value
   uint16_t AND_recirc_PWM = 0;                 //12 bit PWM value
   uint16_t CLNT_FLW_output = 0;                //Coolant pump 12 bit PWM value
   double Coolant_T_readings[3];                //
@@ -104,14 +105,9 @@ DataFrameStruct *DataPtr[BufferSize], DataFrame[BufferSize];
 
 
 void setup() {
-  Serial.begin(115200);
-  delay(100);            //Give USB time to connect EDITME to shortest reliable time
-  if (Serial) {
-    // USB_flag = 1;  //Used so that when connected via USB, verbose status and error messages can be sent, but will still run if not connected
-    Serial.println("Data Logger connected");
-  } else {
-    Serial.end();
-  }
+  delay(1000);
+  USB_flag = USB_setup(115200, 1000);  //Iniitalise the USB, and set flag if present//Give USB time to connect EDITME to shortest reliable time
+
 
   for (int i = 0; i < BufferSize; i++) {
     DataPtr[i] = &DataFrame[i];
@@ -125,12 +121,6 @@ void setup() {
   Interface.begin(Serial2);      //Initialise Serial Transfer object for Interface connection
 
   Core0_boot_flag = 1;
-  if (Serial) {
-    USB_flag = 1;  //Used so that when connected via USB, verbose status and error messages can be sent, but will still run if not connected
-    Serial.println("Cell Voltage monitor connected");
-  } else {
-    Serial.end();
-  }
   while (!Core1_boot_flag) {  //Wait for Core1 to finish its setup
     delay(10);
   }
@@ -162,19 +152,19 @@ void setup1() {
   SPI.setTX(3);
   SPI.setRX(4);
   SPI.setCS(SD_CS_PIN);
-  if (USB_flag) {
+  if (Serial) {
     Serial.print("Initializing SD card...");
   }
 
   if (!SD.begin(SD_CONFIG)) {
     FaultSend(Interface, 'f', 0x71, 0);  //Send fault for SD initialisation fault
-    if (USB_flag) {
+    if (Serial) {
       Serial.println("initialization failed!");
     }
     //EDITME write error throwing code
   } else {
     SD_boot_flag = 1;
-    if (USB_flag) {
+    if (Serial) {
       Serial.println("initialization done.");
     }
   }
@@ -183,7 +173,7 @@ void setup1() {
   Wire.setSCL(21);
 
   if (!rtc.begin()) {
-    if (USB_flag) {
+    if (Serial) {
       Serial.println("Couldn't find RTC");
       Serial.flush();
     }
@@ -198,6 +188,8 @@ void setup1() {
   while (!file_ready_flag) {  //Open a write file to test writing
     file_ready_flag = Create_logfile(boot_time, &Filename[0]);
   }
+
+   Core1_boot_flag = 1;
 }
 
 void loop() {
@@ -322,7 +314,7 @@ void loop() {
   if ((*DataPtr[0]).Data_source_flags & 0x10) {  //If the "To-be-saved" bit is set
                                                  //EDITME update append code for new structs
 
-    char Data_to_file[] = "\n";  //Initialise char array, beginning with a new line character
+    char Data_to_file[] = "\n";  //Initialise char array, beginning with a new line character //EDITME specify size
 
     int j = 1;  //starts at 1 to account for newline chracter
 
@@ -343,6 +335,7 @@ void loop() {
       j += sprintf(&Data_to_file[j], "%u,", (*DataPtr[0]).Process_data.AND_FLW_value[i]);  //Append a reading, and then a delimeter
     }
     j += sprintf(&Data_to_file[j], "%u,", (*DataPtr[0]).Process_data.AND_FLW_target);   //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%u,", (*DataPtr[0]).Process_data.AND_FLW_output);   //Append a reading, and then a delimeter
     j += sprintf(&Data_to_file[j], "%u,", (*DataPtr[0]).Process_data.AND_recirc_PWM);   //Append a reading, and then a delimeter
     j += sprintf(&Data_to_file[j], "%u,", (*DataPtr[0]).Process_data.CLNT_FLW_output);  //Append a reading, and then a delimeter
     for (int i = 0; i < 3; i++) {

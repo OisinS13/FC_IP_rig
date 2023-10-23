@@ -91,6 +91,18 @@ struct DATA {
   bool load_status;
 } data;
 
+#define Cycles_per_step 5
+struct Optimisation_parameters{
+uint32_t Parameters[2]={50000,30000000}; //0=duration, 1=period, in uS
+bool Parameter_flag=0; //if 0, optimising duration, if 1, optimising period
+double Mean_V_per_cycle[Cycles_per_step];
+double Mean_V_per_step[2]={0,0};
+uint8_t Cycle_counter=0;
+// uint8_t Cycles_per_step=5;
+int32_t Step_size[2]={10000, 10000000}; //(signed)
+uint32_t Minimum_step_size[2]={500,500000}; //0 element is for duration, 1 element is for period
+uint8_t Step_size_multiplier=5; //After switching parameters, increase step size to start re-optimising parameter
+} OptimisationParameters;
 
 
 
@@ -134,7 +146,7 @@ void setup() {
   Serial1.setRX(RX_0_pin);
   Serial1.setTX(TX_0_pin);
   Serial1.setPollingMode(true);
-  Serial1.begin(115200);
+   1.begin(115200);
   CellVoltageMonitor.begin(Serial1);
 
   //Set pins for I2C
