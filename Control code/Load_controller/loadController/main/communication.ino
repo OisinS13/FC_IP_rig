@@ -1,3 +1,18 @@
+bool USB_setup(uint32_t Baud_rate, uint16_t Wait_time_mS) {
+  Serial.begin(Baud_rate);
+  delay(Wait_time_mS);  //Give USB time to connect EDITME to shortest reliable time
+  if (Serial) {
+    // USB_flag = 1;  //Used so that when connected via USB, verbose status and error messages can be sent, but will still run if not connected
+    Serial.println("Load Controller Connected");
+    Serial.println("V.0.1 Oisin Shaw Nov 2023");
+
+    return 1;
+  } else {
+    Serial.end();
+    return 0;
+  }
+}
+
 // read serial
 void msgRead() {
   // check messages from interface
