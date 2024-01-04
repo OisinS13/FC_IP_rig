@@ -49,6 +49,30 @@ void dataWrite() {
   uint16_t n_byt = 0;
   n_byt = DataLogger.txObj(data, n_byt);
   DataLogger.sendData(n_byt);
+
+  if (USB_flag) {
+    char Data_to_file[500] = "\n";  //Initialise char array, beginning with a new line character
+    int j = 1;                      //starts at 1 to account for newline chracter
+
+    uint32_t I_ref;  //mA
+    uint32_t V_ref;  //mV
+    uint32_t P_ref;  //W
+    uint32_t V_fc;
+    uint32_t V_fc_spike;
+    uint32_t I_monitor;
+    uint32_t I_clamp;
+    uint32_t time_stamp;
+
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.P_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_fc);        //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_fc_spike);  //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_monitor);   //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_clamp);     //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.time_stamp);  //Append a reading, and then a delimeter
+    Serial.print(Data_to_file);
+  }
 }
 
 
@@ -94,12 +118,15 @@ void USB_Set_Current(CommandParameter& Parameters) {
   } else {
     data.I_ref = temp;
     setCurrent();
+    if (USB_flag){
+      Serial.println("Current_set");
+    }
   }
 }
 
 void USB_Set_Voltage(CommandParameter& Parameters) {
   uint32_t temp = Parameters.NextParameterAsInteger();
-  if (temp < 0 || temp > max_voltage) {
+  if (temp < 10000 || temp > max_voltage) {
     Serial.println("Requested Voltage outside allowable range");
   } else {
     data.V_ref = temp;
@@ -146,13 +173,13 @@ void USB_Set_Delta(CommandParameter& Parameters) {
   if (temp < 0 || temp > max_short_time) {
     Serial.println("Requested duration outside allowable range");
   } else {
-   OptimisationParameters.Parameters[0]= temp;
+    OptimisationParameters.Parameters[0] = temp;
   }
 }
 
 void USB_Set_Tau(CommandParameter& Parameters) {
   uint32_t temp = Parameters.NextParameterAsInteger();
-   OptimisationParameters.Parameters[1]= temp;
+  OptimisationParameters.Parameters[1] = temp;
 }
 
 void USB_Set_Strategy(CommandParameter& Parameters) {
@@ -160,7 +187,7 @@ void USB_Set_Strategy(CommandParameter& Parameters) {
   if (temp < 0 || temp > 4) {
     Serial.println("Requested strategy outside allowable range");
   } else {
-   OptimisationParameters.Optimisation_strategy= temp;
+    OptimisationParameters.Optimisation_strategy = temp;
   }
 }
 
@@ -169,7 +196,7 @@ void USB_Set_Delta_step(CommandParameter& Parameters) {
   if (temp < OptimisationParameters.Minimum_step_size[0] || temp > max_short_time) {
     Serial.println("Requested duration step outside allowable range");
   } else {
-   OptimisationParameters.Step_size[0]= temp;
+    OptimisationParameters.Step_size[0] = temp;
   }
 }
 
@@ -178,7 +205,7 @@ void USB_Set_Tau_step(CommandParameter& Parameters) {
   if (temp < OptimisationParameters.Minimum_step_size[1] || temp > 50000000) {
     Serial.println("Requested period step outside allowable range");
   } else {
-   OptimisationParameters.Step_size[1]= temp;
+    OptimisationParameters.Step_size[1] = temp;
   }
 }
 
@@ -187,6 +214,6 @@ void USB_Set_adaptive_window(CommandParameter& Parameters) {
   if (temp < -5000 || temp > 5000) {
     Serial.println("Requested adaptive Tau hysteresis outside allowable range");
   } else {
-   OptimisationParameters.Adaptive_tau_hysteresis_window= temp;
+    OptimisationParameters.Adaptive_tau_hysteresis_window = temp;
   }
 }

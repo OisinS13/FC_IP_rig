@@ -154,12 +154,27 @@ struct Optimisation_parameters {
   int32_t Adaptive_tau_hysteresis_window = 0;       //How far below the Mean voltage does the sack voltage have to go before it triggers a perturbation
 } OptimisationParameters;
 
-CommandHandler<10, 50> SerialCommandHandler(Serial, '<', '>');  //number of commands, then buffer length of command strings
+CommandHandler<> SerialCommandHandler(Serial, '<', '>');  //number of commands, then buffer length of command strings
 
 
 
 // boot core 0
 void setup() {
+    // Pinmodes
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(load_pin, OUTPUT);
+  pinMode(CC_pin, OUTPUT);
+  pinMode(CV_pin, OUTPUT);
+  pinMode(clear_pin, OUTPUT);
+  pinMode(alarm_1_pin, INPUT);
+  pinMode(alarm_2_pin, INPUT);
+  pinMode(load_pin, OUTPUT);
+  pinMode(ISO_ADC_CS_pin, OUTPUT_12MA);
+  pinMode(in_flag_pin, INPUT);
+  pinMode(out_flag_pin, OUTPUT_12MA);
+  pinMode(set_alarm_pin, OUTPUT);
+  pinMode(igbt_1_pin, OUTPUT_12MA);
+  pinMode(igbt_2_pin, OUTPUT_12MA);
   delay(1000);
   USB_flag = USB_setup(115200, 1000);  //Iniitalise the USB, and set flag if present
 
@@ -189,22 +204,6 @@ void setup() {
   SerialCommandHandler.AddCommand(F("Set_adaptive_window"), USB_Set_adaptive_window);
   //editme add perturbation variable commands
 
-  // Pinmodes
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(load_pin, OUTPUT);
-  pinMode(CC_pin, OUTPUT);
-  pinMode(CV_pin, OUTPUT);
-  pinMode(clear_pin, OUTPUT);
-  pinMode(alarm_1_pin, INPUT);
-  pinMode(alarm_2_pin, INPUT);
-  pinMode(load_pin, OUTPUT);
-  pinMode(ISO_ADC_CS_pin, OUTPUT_12MA);
-  pinMode(in_flag_pin, INPUT);
-  pinMode(out_flag_pin, OUTPUT_12MA);
-  pinMode(set_alarm_pin, OUTPUT);
-  pinMode(igbt_1_pin, OUTPUT_12MA);
-  pinMode(igbt_2_pin, OUTPUT_12MA);
-
   digitalWrite(igbt_1_pin, LOW);  // Close igbt 1
   digitalWrite(igbt_2_pin, LOW);  // Close igbt 2
 
@@ -217,17 +216,18 @@ void setup() {
   SPI.setSCK(ISO_ADC_CLK_pin);
   SPI.setTX(ISO_ADC_MOSI_pin);
   SPI.setRX(ISO_ADC_MISO_pin);
-  SPI.setCS(LED_BUILTIN);
+  // SPI.setCS(LED_BUILTIN);
   digitalWrite(ISO_ADC_CS_pin, HIGH);
+
 
   SPI.begin(0);
   SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   SPI.endTransaction();
 
-
   // initial outputs
   digitalWrite(set_alarm_pin, HIGH);  // Alarm is activated by pulling low
   digitalWrite(clear_pin, HIGH);
+
 
   // Init communication to data logger
   Serial2.setRX(RX_1_pin);
@@ -240,6 +240,9 @@ void setup() {
   // digitalWrite(LED_BUILTIN, HIGH);
   Core0_boot_flag = 1;
   while (!Core1_boot_flag) {
+  }
+  if (USB_flag){
+    Serial.println("Load Controller finished boot");
   }
 }
 
@@ -290,6 +293,7 @@ void loop() {
   } else if (OptimisationParameters.Optimisation_strategy == 4) {
     //EDITME insert adaptive tau to optimise delta here
   }
+SerialCommandHandler.Process();
 }
 
 
