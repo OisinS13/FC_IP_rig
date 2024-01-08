@@ -109,6 +109,8 @@ uint32_t Data_interval = 100;
 // 5 = Hardware trigger in received, perturbing
 // 6 = Perturbation complete
 uint8_t Perturbation_protocol_counter = 0;
+uint16_t Perturbation_timeout = 10000;  //in mS
+uint32_t Perturbation_last_event = 0;
 
 // Data packet
 struct DATA {
@@ -154,27 +156,12 @@ struct Optimisation_parameters {
   int32_t Adaptive_tau_hysteresis_window = 0;       //How far below the Mean voltage does the sack voltage have to go before it triggers a perturbation
 } OptimisationParameters;
 
-CommandHandler<> SerialCommandHandler(Serial, '<', '>');  //number of commands, then buffer length of command strings
+CommandHandler<20, 50> SerialCommandHandler(Serial, '<', '>');  //number of commands, then buffer length of command strings
 
 
 
 // boot core 0
 void setup() {
-    // Pinmodes
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(load_pin, OUTPUT);
-  pinMode(CC_pin, OUTPUT);
-  pinMode(CV_pin, OUTPUT);
-  pinMode(clear_pin, OUTPUT);
-  pinMode(alarm_1_pin, INPUT);
-  pinMode(alarm_2_pin, INPUT);
-  pinMode(load_pin, OUTPUT);
-  pinMode(ISO_ADC_CS_pin, OUTPUT_12MA);
-  pinMode(in_flag_pin, INPUT);
-  pinMode(out_flag_pin, OUTPUT_12MA);
-  pinMode(set_alarm_pin, OUTPUT);
-  pinMode(igbt_1_pin, OUTPUT_12MA);
-  pinMode(igbt_2_pin, OUTPUT_12MA);
   delay(1000);
   USB_flag = USB_setup(115200, 1000);  //Iniitalise the USB, and set flag if present
 
@@ -204,6 +191,22 @@ void setup() {
   SerialCommandHandler.AddCommand(F("Set_adaptive_window"), USB_Set_adaptive_window);
   //editme add perturbation variable commands
 
+  // Pinmodes
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(load_pin, OUTPUT);
+  pinMode(CC_pin, OUTPUT);
+  pinMode(CV_pin, OUTPUT);
+  pinMode(clear_pin, OUTPUT);
+  pinMode(alarm_1_pin, INPUT);
+  pinMode(alarm_2_pin, INPUT);
+  pinMode(load_pin, OUTPUT);
+  pinMode(ISO_ADC_CS_pin, OUTPUT_12MA);
+  pinMode(in_flag_pin, INPUT);
+  pinMode(out_flag_pin, OUTPUT_12MA);
+  pinMode(set_alarm_pin, OUTPUT);
+  pinMode(igbt_1_pin, OUTPUT_12MA);
+  pinMode(igbt_2_pin, OUTPUT_12MA);
+
   digitalWrite(igbt_1_pin, LOW);  // Close igbt 1
   digitalWrite(igbt_2_pin, LOW);  // Close igbt 2
 
@@ -216,18 +219,17 @@ void setup() {
   SPI.setSCK(ISO_ADC_CLK_pin);
   SPI.setTX(ISO_ADC_MOSI_pin);
   SPI.setRX(ISO_ADC_MISO_pin);
-  // SPI.setCS(LED_BUILTIN);
+  SPI.setCS(LED_BUILTIN);
   digitalWrite(ISO_ADC_CS_pin, HIGH);
-
 
   SPI.begin(0);
   SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   SPI.endTransaction();
 
+
   // initial outputs
   digitalWrite(set_alarm_pin, HIGH);  // Alarm is activated by pulling low
   digitalWrite(clear_pin, HIGH);
-
 
   // Init communication to data logger
   Serial2.setRX(RX_1_pin);
@@ -240,9 +242,6 @@ void setup() {
   // digitalWrite(LED_BUILTIN, HIGH);
   Core0_boot_flag = 1;
   while (!Core1_boot_flag) {
-  }
-  if (USB_flag){
-    Serial.println("Load Controller finished boot");
   }
 }
 
@@ -270,6 +269,7 @@ void loop() {
   } else if (OptimisationParameters.Optimisation_strategy == 1) {
     if (micros() - Last_short_time > OptimisationParameters.Parameters[1]) {
       Perturbation_protocol_counter = 1;
+      Perturbation_last_event = millis();
     }
   } else if (OptimisationParameters.Optimisation_strategy == 2) {
     //Do "2DOF P&O" stuff here
@@ -280,6 +280,7 @@ void loop() {
         OptimisationParameters.Cycle_counter = 0;
       }
       Perturbation_protocol_counter = 1;
+      Perturbation_last_event = millis();
     }
   } else if (OptimisationParameters.Optimisation_strategy == 3) {
     if ((data.V_fc - OptimisationParameters.Adaptive_tau_hysteresis_window) < OptimisationParameters.Mean_V_per_cycle[OptimisationParameters.Cycle_counter]) {
@@ -289,11 +290,11 @@ void loop() {
         OptimisationParameters.Cycle_counter = 0;
       }
       Perturbation_protocol_counter = 1;
+      Perturbation_last_event = millis();
     }
   } else if (OptimisationParameters.Optimisation_strategy == 4) {
     //EDITME insert adaptive tau to optimise delta here
   }
-SerialCommandHandler.Process();
 }
 
 
@@ -308,6 +309,7 @@ void loop1() {
       CVM.rxObj(temporary);  //EDITME throw error if wrong number sent?
       if (Perturbation_protocol_counter == 2) {
         Perturbation_protocol_counter = 3;
+        Perturbation_last_event = millis();
       }  //EDITME add error throwing code?
     }
   }
@@ -328,6 +330,7 @@ void loop1() {
       CVM.txObj(1);
       CVM.sendData(1, 'B');
       Perturbation_protocol_counter = 2;
+      Perturbation_last_event = millis();
       break;
     case 2:
       //EDITME do listening here or elsewhere?
@@ -335,6 +338,7 @@ void loop1() {
     case 3:
       digitalWrite(out_flag_pin, HIGH);
       Perturbation_protocol_counter = 4;
+      Perturbation_last_event = millis();
       break;
     case 4:
       if (digitalRead(in_flag_pin)) {
@@ -363,5 +367,12 @@ void loop1() {
       digitalWrite(out_flag_pin, LOW);
       Perturbation_protocol_counter = 0;
       break;
+  }
+
+  if (millis() - Perturbation_last_event > Perturbation_timeout) {
+    Perturbation_protocol_counter = 0;
+    if (USB_flag){
+      Serial.println("Perturbation protocol timeout");
+    }
   }
 }
