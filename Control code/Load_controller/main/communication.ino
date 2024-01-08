@@ -49,6 +49,21 @@ void dataWrite() {
   uint16_t n_byt = 0;
   n_byt = DataLogger.txObj(data, n_byt);
   DataLogger.sendData(n_byt);
+
+    if (USB_flag && USB_Data) {
+    char Data_to_file[500] = "\n";  //Initialise char array, beginning with a new line character
+    int j = 1;                      //starts at 1 to account for newline chracter
+
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.P_ref);       //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_fc);        //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.V_fc_spike);  //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_monitor);   //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.I_clamp);     //Append a reading, and then a delimeter
+    j += sprintf(&Data_to_file[j], "%lu,", data.time_stamp);  //Append a reading, and then a delimeter
+    Serial.print(Data_to_file);
+  }
 }
 
 
@@ -189,4 +204,8 @@ void USB_Set_adaptive_window(CommandParameter& Parameters) {
   } else {
    OptimisationParameters.Adaptive_tau_hysteresis_window= temp;
   }
+}
+void USB_Data_Write(CommandParameter& Parameters) {
+  bool temp = Parameters.NextParameterAsInteger();
+  USB_Data = temp;
 }

@@ -79,6 +79,7 @@ bool alarm_ext = false;
 bool load_flag = false;
 bool short_flag = false;
 bool USB_flag = false;
+bool USB_Data = false;
 bool Core0_boot_flag = 0;
 bool Core1_boot_flag = 0;
 
@@ -189,6 +190,7 @@ void setup() {
   SerialCommandHandler.AddCommand(F("Set_Delta_step"), USB_Set_Delta_step);
   SerialCommandHandler.AddCommand(F("Set_Tau_step"), USB_Set_Tau_step);
   SerialCommandHandler.AddCommand(F("Set_adaptive_window"), USB_Set_adaptive_window);
+  SerialCommandHandler.AddCommand(F("USB_Data_write"), USB_Data_Write);
   //editme add perturbation variable commands
 
   // Pinmodes
@@ -371,7 +373,7 @@ void loop1() {
 
   if (millis() - Perturbation_last_event > Perturbation_timeout) {
     Perturbation_protocol_counter = 0;
-    if (USB_flag){
+    if (USB_flag) {
       Serial.println("Perturbation protocol timeout");
     }
   }
